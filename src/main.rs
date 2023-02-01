@@ -10,6 +10,10 @@ use std::fs;
 use toml;
 use types::{Message, Response, Webhook};
 
+/// to obtain the self signed certificte use:
+/// openssl req -newkey rsa:2048 -sha256 -nodes -keyout YOURPRIVATE.key -x509 -days 365 -out \
+/// YOURPUBLIC.pem -subj "/C=US/ST=New York/L=Brooklyn/O=homebot Company/CN=1.1.1.1"
+
 /// Layout of config.toml should be like:
 /// [bot]
 /// name = "superbot"
@@ -90,7 +94,6 @@ impl Bot {
         Ok(())
     }
 
-    // fn disable_webhook() -> Result<()> {}
     async fn get_webhook_ip(&self) -> Result<String> {
         let url = format!(
             "https://api.telegram.org/bot{}/getWebhookInfo",
