@@ -49,3 +49,9 @@ impl<T: for<'a> Deserialize<'a>> From<String> for Response<T> {
         serde_json::from_str(&value).unwrap()
     }
 }
+
+impl From<String> for Update {
+    fn from(value: String) -> Self {
+        serde_json::from_str(&value).unwrap()
+    }
+}

@@ -5,8 +5,8 @@ use reqwest::header::CONTENT_TYPE;
 use serde::Deserialize;
 use serde_json::{json, Value};
 use server::BotServer;
-use std::error::Error;
 use std::fs;
+use std::{error::Error, sync::Arc};
 use toml;
 use types::{Message, Response, Webhook};
 
@@ -32,17 +32,15 @@ struct BotConfig {
 pub struct Bot {
     client: reqwest::Client,
     current_ip: Option<String>,
-    server: BotServer,
     config: BotConfig,
 }
 
 impl Bot {
-    fn new(ip: &'static str, port: u32) -> Self {
+    fn new() -> Self {
         let conf = Bot::get_config().unwrap();
         Bot {
             current_ip: None,
             client: reqwest::Client::new(),
-            server: BotServer::new(ip, port),
             config: conf.bot,
         }
     }
@@ -111,12 +109,13 @@ impl Bot {
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn Error>> {
-    let homebot = Bot::new("0.0.0.0", 4443);
-
+    let homebot = Bot::new();
+    // TODO: update the certificate when ip
     let ip = homebot.get_ip().await?;
     println!("{:#?}", ip);
     let hook = homebot.get_webhook_ip().await?;
     println!("{:#?}", hook);
-    homebot.server.start().await?;
+    let server: BotServer = BotServer::new("0.0.0.0", 4443, Arc::new(homebot));
+    server.start().await?;
     Ok(())
 }
