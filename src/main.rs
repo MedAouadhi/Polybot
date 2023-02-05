@@ -7,9 +7,9 @@ use serde_json::{json, Value};
 use server::BotServer;
 use std::fs;
 use std::{error::Error, sync::Arc};
+use tokio::process::Command;
 use toml;
 use types::{Message, Response, Webhook};
-
 /// to obtain the self signed certificte use:
 /// openssl req -newkey rsa:2048 -sha256 -nodes -keyout YOURPRIVATE.key -x509 -days 365 -out \
 /// YOURPUBLIC.pem -subj "/C=US/ST=New York/L=Brooklyn/O=homebot Company/CN=1.1.1.1"
@@ -23,12 +23,13 @@ use types::{Message, Response, Webhook};
 struct Config {
     bot: BotConfig,
 }
-#[derive(Deserialize, Debug)]
+#[derive(Deserialize, Debug, Clone)]
 struct BotConfig {
     name: String,
     token: String,
 }
 
+#[derive(Clone)]
 pub struct Bot {
     client: reqwest::Client,
     current_ip: Option<String>,
@@ -77,7 +78,7 @@ impl Bot {
             .text()
             .await?;
         let ip: Value = serde_json::from_str(&resp).context("Failed to parse the json output")?;
-        Ok(ip["origin"].to_string())
+        Ok(ip["origin"].to_string().replace('"', ""))
     }
 
     async fn handle_message(&self, msg: Message) -> Result<()> {
@@ -93,6 +94,8 @@ impl Bot {
     }
 
     async fn get_webhook_ip(&self) -> Result<String> {
+        //gets the web hook info, we use to know if the ip address set in the certificate
+        //is correct or not.
         let url = format!(
             "https://api.telegram.org/bot{}/getWebhookInfo",
             self.config.token
@@ -110,12 +113,41 @@ impl Bot {
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn Error>> {
     let homebot = Bot::new();
-    // TODO: update the certificate when ip
-    let ip = homebot.get_ip().await?;
-    println!("{:#?}", ip);
-    let hook = homebot.get_webhook_ip().await?;
+    let current_ip = homebot.get_ip().await?;
+    let homebot_ref = Arc::new(homebot);
+    let homebot_ref_clone = homebot_ref.clone();
+    tokio::spawn(async move {
+        loop {
+            let result = homebot_ref_clone.get_ip().await;
+            if let Ok(ip) = result {
+                if !ip.is_empty() && ip != current_ip {
+                    println!(
+                        "IP has changed(old = {}, new = {}), calling restart.sh ...",
+                        current_ip, ip
+                    );
+                    let path = std::env::current_dir()
+                        .unwrap()
+                        .into_os_string()
+                        .into_string()
+                        .unwrap();
+                    let output = Command::new(format!("{}/restart.sh", path))
+                        .arg(ip)
+                        .arg(&homebot_ref_clone.config.token)
+                        .output()
+                        .await
+                        .expect("Problem with executing the command");
+                    println!("output is = {:#?}", String::from_utf8(output.stdout));
+                    tokio::time::sleep(tokio::time::Duration::from_secs(60)).await;
+                }
+            }
+        }
+    });
+    // homebot.current_ip = Some(ip);
+    println!("Started the server ...");
+    // println!("{:#?}", ip);
+    let hook = homebot_ref.clone().get_webhook_ip().await?;
     println!("{:#?}", hook);
-    let server: BotServer = BotServer::new("0.0.0.0", 4443, Arc::new(homebot));
+    let server: BotServer = BotServer::new("0.0.0.0", 4443, homebot_ref);
     server.start().await?;
     Ok(())
 }
