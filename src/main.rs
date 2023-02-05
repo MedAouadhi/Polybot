@@ -10,19 +10,12 @@ use std::{error::Error, sync::Arc};
 use tokio::process::Command;
 use toml;
 use types::{Message, Response, Webhook};
-/// to obtain the self signed certificte use:
-/// openssl req -newkey rsa:2048 -sha256 -nodes -keyout YOURPRIVATE.key -x509 -days 365 -out \
-/// YOURPUBLIC.pem -subj "/C=US/ST=New York/L=Brooklyn/O=homebot Company/CN=1.1.1.1"
 
-/// Layout of config.toml should be like:
-/// [bot]
-/// name = "superbot"
-/// token = "11111111112222222222333333333"
 #[derive(Deserialize, Debug)]
-
 struct Config {
     bot: BotConfig,
 }
+
 #[derive(Deserialize, Debug, Clone)]
 struct BotConfig {
     name: String,
