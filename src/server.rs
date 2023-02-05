@@ -14,10 +14,9 @@ pub struct BotServer {
 
 #[post("/")]
 async fn handler(body: web::Bytes, bot: web::Data<Arc<Bot>>) -> impl Responder {
-    // println!("Got: {:?}", String::from_utf8(body.to_vec()));
     let update: Update = String::from_utf8(body.to_vec()).unwrap().into();
     bot.handle_message(update.message).await.unwrap();
-    HttpResponse::Ok().body("Hello World")
+    HttpResponse::Ok()
 }
 
 /// Create the key with

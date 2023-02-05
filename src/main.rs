@@ -120,6 +120,7 @@ async fn main() -> Result<(), Box<dyn Error>> {
         loop {
             let result = homebot_ref_clone.get_ip().await;
             if let Ok(ip) = result {
+                // TODO: Check against the ip of the webhook
                 if !ip.is_empty() && ip != current_ip {
                     println!(
                         "IP has changed(old = {}, new = {}), calling restart.sh ...",
@@ -142,11 +143,7 @@ async fn main() -> Result<(), Box<dyn Error>> {
             }
         }
     });
-    // homebot.current_ip = Some(ip);
     println!("Started the server ...");
-    // println!("{:#?}", ip);
-    let hook = homebot_ref.clone().get_webhook_ip().await?;
-    println!("{:#?}", hook);
     let server: BotServer = BotServer::new("0.0.0.0", 4443, homebot_ref);
     server.start().await?;
     Ok(())

@@ -21,6 +21,9 @@ script when it happens.
 - the script creates the new certificate, uploads it to the Telegram servers updating the webhook, and finally touches the restart.notif file
 which will trigger the cargo run. 
 
+## Before you start
+Make sure to forward the port 443 in the settings of your router or firewall. For my case I forwarded all incoming requests to the port 443 to my local 4443 port.
+
 ## Configuration
 1. First of all you need to create your own bot with the help of BotFather.
     - Just send a `/newbot` message to `BotFather` bot using your normal telegram account. (find more informations [here.](https://core.telegram.org/bots/tutorial)). This will give the API key that you will need later.
