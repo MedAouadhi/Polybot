@@ -5,7 +5,9 @@ use serde::Deserialize;
 pub struct Chat {
     pub id: u64,
     first_name: String,
+    #[serde(default)]
     last_name: String,
+    #[serde(default)]
     username: String,
     #[serde(rename(deserialize = "type"))]
     chat_type: String,
