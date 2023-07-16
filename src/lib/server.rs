@@ -1,6 +1,6 @@
 use std::sync::Arc;
-
-use crate::{types::Update, Bot};
+use super::types::Update;
+use super::bot::Bot;
 use actix_web::{dev::Server, post, web, App, HttpResponse, HttpServer, Responder};
 use anyhow::{Ok, Result};
 use openssl::ssl::{SslAcceptor, SslFiletype, SslMethod};
@@ -15,7 +15,11 @@ pub struct BotServer {
 #[post("/")]
 async fn handler(body: web::Bytes, bot: web::Data<Arc<Bot>>) -> impl Responder {
     let update: Update = String::from_utf8(body.to_vec()).unwrap().into();
-    bot.handle_message(update.message).await.unwrap();
+    if let Some(msg) = update.message {
+        bot.handle_message(msg).await.unwrap();
+    } else {
+        println!("Unsupported message format {:#?}", update);
+    }
     HttpResponse::Ok()
 }
 
@@ -23,10 +27,10 @@ impl BotServer {
     pub fn new(ip: &'static str, port: u32, bot: Arc<Bot>) -> Self {
         let mut builder = SslAcceptor::mozilla_intermediate(SslMethod::tls()).unwrap();
         builder
-            .set_private_key_file("YOURPRIVATE.key", SslFiletype::PEM)
+            .set_private_key_file("/home/mohamed/personal/homebot/YOURPRIVATE.key", SslFiletype::PEM)
             .unwrap();
         builder
-            .set_certificate_chain_file("YOURPUBLIC.pem")
+            .set_certificate_chain_file("/home/mohamed/personal/homebot/YOURPUBLIC.pem")
             .unwrap();
         let bot_clone = bot.clone();
         let server = HttpServer::new(move || {

@@ -7,7 +7,7 @@ Type=simple
 Restart=always
 RestartSec=1
 User=mohamed
-ExecStart=/usr/bin/watchexec -v -w /home/mohamed/homebot --workdir /home/mohamed/homebot -r -e notif  -- /home/mohamed/.cargo/bin/cargo run
+ExecStart= /home/mohamed/.cargo/bin/cargo run /home/mohamed/personal/homebot/Cargo.toml
 
 [Install]
 WantedBy=multi-user.target

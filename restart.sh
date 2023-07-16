@@ -10,6 +10,5 @@ echo "Setting the webhook with the new certificate"
 curl -F "url=https://$1/" -F "certificate=@YOURPUBLIC.pem" \
 "https://api.telegram.org/bot$2/setWebhook"
 
-
-echo "Using watchexec restart the homebot by updating the notif file"
-echo $(date) >> restart.notif
+echo "restarting homebot service"
+sudo systemctl restart homebot.service

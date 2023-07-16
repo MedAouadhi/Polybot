@@ -15,3 +15,13 @@ token-generator = "0.1.0"
 actix-web = {version = "4", features = ["openssl"]}
 openssl = "0.10"
 toml = "0.7.1"
+serde_with = {version = "3.0.0", features = ["chrono"]}
+chrono = "0.4.26"
+
+[[bin]]
+name = "homebot"
+path = "src/main.rs"
+
+[lib]
+name = "telegram_bot"
+path = "src/lib/lib.rs"
