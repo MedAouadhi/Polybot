@@ -94,7 +94,7 @@ impl Bot {
         Ok(())
     }
 
-    async fn get_webhook_ip(&self) -> Result<String> {
+    pub async fn get_webhook_ip(&self) -> Result<String> {
         //gets the web hook info, we use to know if the ip address set in the certificate
         //is correct or not.
         let url = format!(

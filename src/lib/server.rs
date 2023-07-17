@@ -1,6 +1,6 @@
 use std::sync::Arc;
 use super::types::Update;
-use super::bot::Bot;
+use super::telegram_ops::Bot;
 use actix_web::{dev::Server, post, web, App, HttpResponse, HttpServer, Responder};
 use anyhow::{Ok, Result};
 use openssl::ssl::{SslAcceptor, SslFiletype, SslMethod};
@@ -9,7 +9,7 @@ pub struct BotServer {
     ip: &'static str,
     port: u32,
     worker: Server,
-    bot: Arc<Bot>,
+    pub bot: Arc<Bot>,
 }
 
 #[post("/")]
@@ -24,7 +24,8 @@ async fn handler(body: web::Bytes, bot: web::Data<Arc<Bot>>) -> impl Responder {
 }
 
 impl BotServer {
-    pub fn new(ip: &'static str, port: u32, bot: Arc<Bot>) -> Self {
+    pub fn new(ip: &'static str, port: u32) -> Self {
+        let bot = Arc::new(Bot::new());
         let mut builder = SslAcceptor::mozilla_intermediate(SslMethod::tls()).unwrap();
         builder
             .set_private_key_file("/home/mohamed/personal/homebot/YOURPRIVATE.key", SslFiletype::PEM)
@@ -41,6 +42,7 @@ impl BotServer {
         .bind_openssl(format!("{}:{}", ip, port), builder)
         .unwrap()
         .run();
+
         BotServer {
             ip: ip,
             port: port,
