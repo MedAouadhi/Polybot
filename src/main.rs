@@ -30,13 +30,9 @@ async fn main() -> Result<(), Box<dyn Error>> {
         std::process::exit(0);
     });
 
-    println!("Debug! {:?}, {:?}, {:?}", current_ip, webhook_ip, token);
-
     env_logger::init_from_env(Env::default().default_filter_or("info"));
-
     tokio::spawn(async move {
         loop {
-            // TODO: Check against the ip of the webhook
             if !webhook_ip.is_empty() && webhook_ip != current_ip {
                 println!(
                     "IP has changed(old = {}, new = {}), calling restart.sh ...",
