@@ -1,6 +1,5 @@
-use actix_web::web;
 use anyhow::Result;
-use tokio::select;
+use env_logger::Env;
 use std::error::Error;
 use std::sync::Arc;
 use telegram_bot::opentmeteo::OpenMeteo;
@@ -8,11 +7,8 @@ use telegram_bot::server::BotServer;
 use telegram_bot::telegram_ops::Bot;
 use telegram_bot::telegram_ops::TelegramBot;
 use tokio::process::Command;
-use signal_hook_tokio::Signals;
+use tokio::select;
 use tokio::signal::unix::{signal, SignalKind};
-use env_logger::Env;
-
-
 
 type MyBot = TelegramBot<OpenMeteo>;
 
@@ -28,9 +24,9 @@ async fn main() -> Result<(), Box<dyn Error>> {
     let token = server.bot.get_token().to_string();
 
     let signal_handler = tokio::spawn(async {
-        let mut sigterm = signal(SignalKind::interrupt()).expect("Failed to create signal handler");
+        let mut sigterm = signal(SignalKind::terminate()).expect("Failed to create signal handler terminate");
         sigterm.recv().await;
-        println!("SIGINT received. Shutting down...");
+        println!("signal received. Shutting down...");
         std::process::exit(0);
     });
 
@@ -59,7 +55,7 @@ async fn main() -> Result<(), Box<dyn Error>> {
         }
     });
     println!("Started the server ...");
-    
+
     select! {
         _ = signal_handler => {},
         _ = server.start() => {}

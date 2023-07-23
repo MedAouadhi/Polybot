@@ -25,6 +25,7 @@ struct Forecast {
     utc_offset_seconds: u32,
     timezone: String,
     timezone_abbreviation: String,
+    #[serde(skip)]
     elevation: f32,
     hourly_units: HourlyUnits,
     hourly: Hourly,
@@ -36,7 +37,9 @@ struct City {
     name: String,
     latitude: f32,
     longitude: f32,
+    #[serde(skip)]
     elevation: f32,
+    #[serde(skip)]
     feature_code: String,
     country_code: String,
     #[serde(skip)]
