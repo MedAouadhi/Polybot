@@ -130,7 +130,7 @@ impl WeatherProvider for OpenMeteo {
             if let Some(data) = resp {
                 let hour = chrono::Local::now().hour();
                 let forecast: Forecast = serde_json::from_str(&data).unwrap();
-                return Some(forecast.hourly.temperature_2m[(hour - 1) as usize]);
+                return Some(forecast.hourly.temperature_2m[hour as usize]);
             }
         }
         None
