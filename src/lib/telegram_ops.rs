@@ -1,15 +1,22 @@
+use super::opentmeteo::OpenMeteo;
+use super::types::{Message, Response, WeatherProvider, Webhook};
 use anyhow::{bail, Context, Result};
+use async_trait::async_trait;
 use reqwest::header::CONTENT_TYPE;
 use serde::Deserialize;
 use serde_json::{json, Value};
-use super::server::BotServer;
 use std::fs;
 use toml;
-use super::types::{Message, Response, Webhook};
 
 #[derive(Deserialize, Debug)]
 struct Config {
     bot: BotConfig,
+}
+
+#[async_trait]
+pub trait Bot: Send + Sync + 'static {
+    async fn handle_message(&self, msg: Message) -> Result<()>;
+    async fn get_webhook_ip(&self) -> Result<String>;
 }
 
 #[derive(Deserialize, Debug, Clone)]
@@ -19,24 +26,26 @@ struct BotConfig {
 }
 
 #[derive(Clone)]
-pub struct Bot {
+pub struct TelegramBot<T: WeatherProvider> {
     client: reqwest::Client,
     current_ip: Option<String>,
+    weather: T,
     config: BotConfig,
 }
 
-impl Bot {
-    pub fn new() -> Self {
-        let conf = Bot::get_config().unwrap();
-        Bot {
+impl<T: WeatherProvider> TelegramBot<T> {
+    pub fn new(weather: T) -> Self {
+        let conf = Self::get_config().unwrap();
+        TelegramBot {
             current_ip: None,
             client: reqwest::Client::new(),
             config: conf.bot,
+            weather: weather,
         }
     }
 
     pub fn get_token(&self) -> &str {
-       &self.config.token
+        &self.config.token
     }
 
     fn get_config() -> Result<Config> {
@@ -45,8 +54,8 @@ impl Bot {
             .into_os_string()
             .into_string()
             .unwrap();
-        
-        let file = format!("/home/mohamed/personal/homebot/config.toml"); 
+
+        let file = format!("/home/mohamed/personal/homebot/config.toml");
         println!("{:?}", file);
         let toml_str = fs::read_to_string(file)?;
         let map: Config = toml::from_str(&toml_str)?;
@@ -81,20 +90,41 @@ impl Bot {
         let ip: Value = serde_json::from_str(&resp).context("Failed to parse the json output")?;
         Ok(ip["origin"].to_string().replace('"', ""))
     }
+}
 
-    pub async fn handle_message(&self, msg: Message) -> Result<()> {
+#[async_trait]
+impl<T: WeatherProvider + 'static> Bot for TelegramBot<T> {
+    async fn handle_message(&self, msg: Message) -> Result<()> {
         let answer: String;
         let id = msg.chat.id;
-        answer = match msg.text.as_str() {
-            "/ip" => if let Ok(ip) = self.get_ip().await {ip} else {"Problem getting the ip, try again".into()},
-            "hello" => "hello back :)".into(),
+        let mut command = msg.text.split_whitespace();
+        answer = match command.next() {
+            Some("/ip") => {
+                if let Ok(ip) = self.get_ip().await {
+                    ip
+                } else {
+                    "Problem getting the ip, try again".into()
+                }
+            }
+            Some("/temp") => {
+                let mut city = self.weather.get_favourite_city();
+                if let Some(arg) = command.next() {
+                    city = arg.to_string();
+                }
+                if let Some(temp) = self.weather.get_temperature(city).await {
+                    temp.to_string()
+                } else {
+                    "Error getting the temp".into()
+                }
+            }
+            Some("hello") => "hello back :)".into(),
             _ => "did not understand!".into(),
         };
         self.reply(id, &answer).await?;
         Ok(())
     }
 
-    pub async fn get_webhook_ip(&self) -> Result<String> {
+    async fn get_webhook_ip(&self) -> Result<String> {
         //gets the web hook info, we use to know if the ip address set in the certificate
         //is correct or not.
         let url = format!(
@@ -109,5 +139,4 @@ impl Bot {
             bail!("Could not get correct webhook");
         }
     }
-    //TODO: implement get_web_hook
 }

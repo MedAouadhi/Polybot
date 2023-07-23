@@ -17,6 +17,10 @@ openssl = "0.10"
 toml = "0.7.1"
 serde_with = {version = "3.0.0", features = ["chrono"]}
 chrono = "0.4.26"
+async-trait = "0.1.72"
+signal-hook-tokio = "0.3.1"
+log = "0.4.19"
+env_logger = "0.10.0"
 
 [[bin]]
 name = "homebot"

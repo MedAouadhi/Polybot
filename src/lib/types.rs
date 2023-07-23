@@ -1,6 +1,7 @@
+use async_trait::async_trait;
+use chrono::{DateTime, Utc};
 use serde::Deserialize;
 use serde_with::TimestampSeconds;
-use chrono::{DateTime, Utc};
 
 #[derive(Deserialize, Clone, Debug)]
 #[allow(dead_code)]
@@ -30,17 +31,17 @@ pub struct Message {
 
 #[derive(Deserialize, Clone, Debug)]
 pub struct User {
-    id: u64,  
+    id: u64,
     is_bot: bool,
-    first_name: String, 
+    first_name: String,
     last_name: Option<String>,
-    username: Option<String>,   
-    language_code: Option<String>,  
-    is_premium: Option<bool>, 
-    added_to_attachment_menu: Option<bool>, 
-    can_join_groups: Option<bool>, 
-    can_read_all_group_messages: Option<bool>,   
-    supports_inline_queries: Option<bool>, 
+    username: Option<String>,
+    language_code: Option<String>,
+    is_premium: Option<bool>,
+    added_to_attachment_menu: Option<bool>,
+    can_join_groups: Option<bool>,
+    can_read_all_group_messages: Option<bool>,
+    supports_inline_queries: Option<bool>,
 }
 
 #[serde_with::serde_as]
@@ -58,24 +59,24 @@ pub struct Update {
     pub message: Option<Message>,
     pub edited_message: Option<Message>,
     pub channel_post: Option<Message>,
-    pub edited_channel_post: Option<Message>, 
-    #[serde(skip)] 
+    pub edited_channel_post: Option<Message>,
+    #[serde(skip)]
     pub inline_query: Option<String>,
     #[serde(skip)]
     chosen_inline_result: Option<String>,
     #[serde(skip)]
     callback_query: Option<String>,
-    #[serde(skip)] 
-    shipping_query: Option<String>, 
-    #[serde(skip)] 
-    pre_checkout_query: Option<String>, 
-    #[serde(skip)] 
+    #[serde(skip)]
+    shipping_query: Option<String>,
+    #[serde(skip)]
+    pre_checkout_query: Option<String>,
+    #[serde(skip)]
     poll: Option<String>,
-    #[serde(skip)] 
+    #[serde(skip)]
     poll_answer: Option<String>,
     my_chat_member: Option<ChatMemberUpdated>,
     chat_member: Option<ChatMemberUpdated>,
-    #[serde(skip)] 
+    #[serde(skip)]
     chat_join_request: Option<String>,
 }
 
@@ -106,4 +107,16 @@ impl From<String> for Update {
         println!("{:#?}", update_str);
         return update_str;
     }
+}
+
+pub enum ForecastTime {
+    Later(u32),
+    Tomorrow,
+}
+
+#[async_trait]
+pub trait WeatherProvider: Sync + Send + Clone {
+    async fn get_temperature(&self, city: String) -> Option<f32>;
+    async fn get_temp_forecast(&self, city: String, time: ForecastTime) -> Option<f32>;
+    fn get_favourite_city(&self) -> String;
 }
