@@ -2,7 +2,6 @@ use std::sync::Arc;
 use super::telegram_ops::Bot;
 use super::types::Update;
 use actix_web::middleware::Logger;
-use actix_web::rt::System;
 use actix_web::{dev::Server, post, web, App, HttpResponse, HttpServer, Responder};
 use anyhow::{Ok, Result};
 use openssl::ssl::{SslAcceptor, SslFiletype, SslMethod};
