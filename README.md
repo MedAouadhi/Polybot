@@ -1,5 +1,7 @@
 # Homebot
 
+[![Rust](https://github.com/MedAouadhi/homebot/actions/workflows/rust.yml/badge.svg?branch=master)](https://github.com/MedAouadhi/homebot/actions/workflows/rust.yml)
+
 A home server using telegram bot api, useful to respond to commands. To be used for home automation
 or anything else.
 
