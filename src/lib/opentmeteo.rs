@@ -1,7 +1,7 @@
 use crate::types::{ForecastTime, WeatherProvider};
 use anyhow::Result;
 use async_trait::async_trait;
-use chrono::{DateTime, Timelike, Utc};
+use chrono::Timelike;
 use reqwest::header::CONTENT_TYPE;
 use serde::Deserialize;
 
@@ -69,11 +69,11 @@ struct Geolocation {
     generationtime_ms: f32,
 }
 
-#[derive(Clone)]
+#[derive(Clone, Default)]
 pub struct OpenMeteo {
     api_key: String,
     client: reqwest::Client,
-    pub favourite_city: String,
+    favourite_city: String,
 }
 
 impl OpenMeteo {
@@ -142,5 +142,29 @@ impl WeatherProvider for OpenMeteo {
 
     fn get_favourite_city(&self) -> String {
         self.favourite_city.clone()
+    }
+}
+
+#[cfg(test)]
+mod test {
+    use crate::{opentmeteo::OpenMeteo, types::WeatherProvider};
+
+
+    #[tokio::test]
+    async fn test_get_geolocation() {
+        let weather = OpenMeteo::new("".to_string(), "Berlin".to_string());
+        assert_eq!(weather.get_geolocation("Bizerte".to_string()).await.ok(), Some(Some((37.27442f32, 9.87391f32))));
+        assert_eq!(weather.get_geolocation("Zagreb".to_string()).await.ok(), Some(Some((45.81444f32, 15.97798f32))));
+        assert_eq!(weather.get_geolocation("Lalaland".to_string()).await.ok(), Some(None));
+    }
+
+
+    #[tokio::test]
+    async fn test_get_temperature() {
+        let weather = OpenMeteo::default();
+        let temp = weather.get_temperature("Bizerte".to_string()).await.unwrap();
+        assert!(temp > -10.0f32);
+        assert!(temp < 50.0f32);
+        assert_eq!(weather.get_temperature("Mordor".to_string()).await, None);
     }
 }
