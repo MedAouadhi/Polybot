@@ -12,6 +12,7 @@ use toml;
 #[derive(Deserialize, Debug)]
 struct Config {
     bot: BotConfig,
+    server: ServerConfig,
 }
 
 #[async_trait]
@@ -25,6 +26,14 @@ pub trait Bot: Send + Sync + 'static {
 struct BotConfig {
     name: String,
     token: String,
+}
+
+#[derive(Deserialize, Debug, Clone)]
+struct ServerConfig {
+    #[serde(alias = "pubkey")]
+    pubkey_path: String,
+    #[serde(alias = "privkey")]
+    privkey_path: String,
 }
 
 #[derive(Clone)]

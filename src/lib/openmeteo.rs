@@ -150,7 +150,7 @@ impl WeatherProvider for OpenMeteo {
 
 #[cfg(test)]
 mod test {
-    use crate::{opentmeteo::OpenMeteo, types::WeatherProvider};
+    use crate::{openmeteo::OpenMeteo, types::WeatherProvider};
 
     #[tokio::test]
     async fn test_get_geolocation() {

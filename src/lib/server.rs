@@ -1,4 +1,4 @@
-use super::telegram_ops::Bot;
+use super::telegrambot::Bot;
 use super::types::Update;
 use actix_ip_filter::IPFilter;
 use actix_web::middleware::Logger;
@@ -10,8 +10,6 @@ use std::path::PathBuf;
 use std::sync::Arc;
 
 pub struct BotServer<B: Bot> {
-    ip: &'static str,
-    port: u32,
     worker: Server,
     pub bot: Arc<B>,
 }
@@ -48,13 +46,7 @@ impl<B: Bot> BotServer<B> {
                 .app_data(web::Data::new(new_bot.clone()))
                 .service(handler)
                 .wrap(Logger::default())
-                .wrap(
-                    IPFilter::new()
-                        // allow the telegram servers IP address
-                        // According to https://core.telegram.org/bots/webhooks
-                        // the allowed IP addresses would be 149.154.160.0/20 and 91.108.4.0/22
-                        .allow(new_bot.get_server_ips().unwrap()),
-                )
+                .wrap(IPFilter::new().allow(new_bot.get_server_ips().unwrap()))
         })
         .shutdown_timeout(3)
         .bind_openssl(format!("{}:{}", ip, port), builder)
@@ -62,8 +54,6 @@ impl<B: Bot> BotServer<B> {
         .run();
 
         BotServer {
-            ip: ip,
-            port: port,
             bot: bot.clone(),
             worker: server,
         }

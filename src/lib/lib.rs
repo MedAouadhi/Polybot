@@ -1,4 +1,4 @@
-pub mod opentmeteo;
+pub mod openmeteo;
 pub mod server;
-pub mod telegram_ops;
-pub mod types;
+pub mod telegrambot;
+mod types;
