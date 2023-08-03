@@ -1,39 +1,18 @@
-use super::types::{Message, Response, WeatherProvider, Webhook};
+use super::types::{BotConfig, Config, Message, Response, WeatherProvider, Webhook};
 use anyhow::{bail, Context, Result};
 use async_trait::async_trait;
 use rand::Rng;
 use reqwest::header::CONTENT_TYPE;
-use serde::Deserialize;
 use serde_json::{json, Value};
 use std::path::PathBuf;
 use std::{env, fs};
 use toml;
-
-#[derive(Deserialize, Debug)]
-struct Config {
-    bot: BotConfig,
-    server: ServerConfig,
-}
 
 #[async_trait]
 pub trait Bot: Send + Sync + 'static {
     async fn handle_message(&self, msg: Message) -> Result<()>;
     async fn get_webhook_ip(&self) -> Result<String>;
     fn get_server_ips(&self) -> Result<Vec<&'static str>>;
-}
-
-#[derive(Deserialize, Debug, Clone)]
-struct BotConfig {
-    name: String,
-    token: String,
-}
-
-#[derive(Deserialize, Debug, Clone)]
-struct ServerConfig {
-    #[serde(alias = "pubkey")]
-    pubkey_path: String,
-    #[serde(alias = "privkey")]
-    privkey_path: String,
 }
 
 #[derive(Clone)]
@@ -44,26 +23,16 @@ pub struct TelegramBot<T: WeatherProvider> {
 }
 
 impl<T: WeatherProvider> TelegramBot<T> {
-    pub fn new(weather: T) -> Self {
-        let conf = Self::get_config().unwrap();
+    pub fn new(weather: T, config: BotConfig) -> Self {
         TelegramBot {
             client: reqwest::Client::new(),
-            config: conf.bot,
+            config: config,
             weather: weather,
         }
     }
 
     pub fn get_token(&self) -> &str {
         &self.config.token
-    }
-
-    fn get_config() -> Result<Config> {
-        let mut config_file = PathBuf::from(env::current_dir().unwrap());
-        config_file.push("config.toml");
-        let toml_str = fs::read_to_string(config_file)?;
-        let map: Config = toml::from_str(&toml_str)?;
-        println!("{:#?}", map);
-        Ok(map)
     }
 
     async fn reply(&self, id: u64, msg: &str) -> Result<()> {

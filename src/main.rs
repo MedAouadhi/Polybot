@@ -8,19 +8,31 @@ use telegram_bot::openmeteo::OpenMeteo;
 use telegram_bot::server::BotServer;
 use telegram_bot::telegrambot::Bot;
 use telegram_bot::telegrambot::TelegramBot;
+use telegram_bot::Config;
+use tokio::fs;
 use tokio::process::Command;
 use tokio::select;
 use tokio::signal::unix::{signal, SignalKind};
 
 type MyBot = TelegramBot<OpenMeteo>;
 
+async fn get_config() -> Result<Config> {
+    let mut config_file = PathBuf::from(env::current_dir().unwrap());
+    config_file.push("config.toml");
+    let toml_str = fs::read_to_string(config_file).await?;
+    let map: Config = toml::from_str(&toml_str)?;
+    println!("{:#?}", map);
+    Ok(map)
+}
+
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn Error>> {
-    let bot = Arc::new(MyBot::new(OpenMeteo::new(
-        "api_key".to_string(),
-        "Lehnitz".to_string(),
-    )));
-    let server = BotServer::new("0.0.0.0", 4443, bot);
+    let conf = get_config().await?;
+    let bot = Arc::new(MyBot::new(
+        OpenMeteo::new("api_key".to_string(), "Lehnitz".to_string()),
+        conf.bot,
+    ));
+    let server = BotServer::new(conf.server, bot);
     let current_ip = server.bot.get_ip().await?;
     let webhook_ip = server.bot.get_webhook_ip().await?;
     let token = server.bot.get_token().to_string();

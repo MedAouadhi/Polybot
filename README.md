@@ -26,13 +26,19 @@ Make sure to forward the port 443 in the settings of your router or firewall. Fo
 
 ## Configuration
 1. First of all you need to create your own bot with the help of BotFather.
-    - Just send a `/newbot` message to `BotFather` bot using your normal telegram account. (find more informations [here.](https://core.telegram.org/bots/tutorial)). This will give the API key that you will need later.
+    - Just send a `/newbot` message to `BotFather` bot using your normal telegram account. (find more informations [here.](https://core.telegram.org/bots/tutorial)). This will give you the API token.
 
 2. Create a `config.toml` file in the root directory of the project, with this layout:
 ```toml
 [bot]
 name = "superbot"
 token = "11111111112222222222333333333"
+
+[server]
+ip = "0.0.0.0"
+port = 4443
+privkeyfile = "YOURPRIVATE.key"
+pubkeyfile = "YOURPUBLIC.pem"
 ```
 3. For the first time only:
 execute the `restart.sh` script with the correct ip address and token, e.g:

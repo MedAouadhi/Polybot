@@ -1,3 +1,5 @@
+use crate::ServerConfig;
+
 use super::telegrambot::Bot;
 use super::types::Update;
 use actix_ip_filter::IPFilter;
@@ -26,16 +28,16 @@ async fn handler(body: web::Bytes, bot: web::Data<Arc<dyn Bot>>) -> impl Respond
 }
 
 impl<B: Bot> BotServer<B> {
-    pub fn new(ip: &'static str, port: u32, bot: Arc<B>) -> Self {
+    pub fn new(config: ServerConfig, bot: Arc<B>) -> Self {
         let mut priv_key = PathBuf::from(env::current_dir().unwrap());
-        priv_key.push("YOURPRIVATE.key");
+        priv_key.push(config.privkey_path);
         let mut builder = SslAcceptor::mozilla_intermediate(SslMethod::tls()).unwrap();
         builder
             .set_private_key_file(priv_key, SslFiletype::PEM)
             .unwrap();
 
         let mut pub_key = PathBuf::from(env::current_dir().unwrap());
-        pub_key.push("YOURPUBLIC.pem");
+        pub_key.push(config.pubkey_path);
         builder.set_certificate_chain_file(pub_key).unwrap();
         let bot_clone = bot.clone();
         let bot_object: Arc<dyn Bot> = bot_clone;
@@ -49,7 +51,7 @@ impl<B: Bot> BotServer<B> {
                 .wrap(IPFilter::new().allow(new_bot.get_server_ips().unwrap()))
         })
         .shutdown_timeout(3)
-        .bind_openssl(format!("{}:{}", ip, port), builder)
+        .bind_openssl(format!("{}:{}", config.ip, config.port), builder)
         .unwrap()
         .run();
 

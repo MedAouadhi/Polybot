@@ -3,6 +3,27 @@ use chrono::{DateTime, Utc};
 use serde::Deserialize;
 use serde_with::TimestampSeconds;
 
+#[derive(Deserialize, Debug)]
+pub struct Config {
+    pub bot: BotConfig,
+    pub server: ServerConfig,
+}
+#[derive(Deserialize, Debug, Clone)]
+pub struct BotConfig {
+    pub name: String,
+    pub token: String,
+}
+
+#[derive(Deserialize, Debug, Clone)]
+pub struct ServerConfig {
+    pub ip: String,
+    pub port: u32,
+    #[serde(alias = "pubkeyfile")]
+    pub pubkey_path: String,
+    #[serde(alias = "privkeyfile")]
+    pub privkey_path: String,
+}
+
 #[derive(Deserialize, Clone, Debug)]
 #[allow(dead_code)]
 pub struct Chat {
