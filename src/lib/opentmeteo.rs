@@ -41,6 +41,7 @@ struct City {
     elevation: f32,
     #[serde(skip)]
     feature_code: String,
+    #[serde(skip)]
     country_code: String,
     #[serde(skip)]
     admin1_id: u32,
@@ -53,7 +54,9 @@ struct City {
     population: u32,
     #[serde(skip)]
     postcodes: Vec<String>,
+    #[serde(skip)]
     country_id: u32,
+    #[serde(skip)]
     country: String,
     #[serde(skip)]
     admin1: String,
@@ -94,7 +97,7 @@ impl OpenMeteo {
             .await?
             .text()
             .await?;
-        
+
         let data: Geolocation =
             serde_json::from_str(&resp).expect("problem with getting geolocation data");
 
@@ -149,20 +152,30 @@ impl WeatherProvider for OpenMeteo {
 mod test {
     use crate::{opentmeteo::OpenMeteo, types::WeatherProvider};
 
-
     #[tokio::test]
     async fn test_get_geolocation() {
         let weather = OpenMeteo::new("".to_string(), "Berlin".to_string());
-        assert_eq!(weather.get_geolocation("Bizerte".to_string()).await.ok(), Some(Some((37.27442f32, 9.87391f32))));
-        assert_eq!(weather.get_geolocation("Zagreb".to_string()).await.ok(), Some(Some((45.81444f32, 15.97798f32))));
-        assert_eq!(weather.get_geolocation("Lalaland".to_string()).await.ok(), Some(None));
+        assert_eq!(
+            weather.get_geolocation("Bizerte".to_string()).await.ok(),
+            Some(Some((37.27442f32, 9.87391f32)))
+        );
+        assert_eq!(
+            weather.get_geolocation("Zagreb".to_string()).await.ok(),
+            Some(Some((45.81444f32, 15.97798f32)))
+        );
+        assert_eq!(
+            weather.get_geolocation("Lalaland".to_string()).await.ok(),
+            Some(None)
+        );
     }
-
 
     #[tokio::test]
     async fn test_get_temperature() {
         let weather = OpenMeteo::default();
-        let temp = weather.get_temperature("Bizerte".to_string()).await.unwrap();
+        let temp = weather
+            .get_temperature("Bizerte".to_string())
+            .await
+            .unwrap();
         assert!(temp > -10.0f32);
         assert!(temp < 50.0f32);
         assert_eq!(weather.get_temperature("Mordor".to_string()).await, None);

@@ -58,6 +58,18 @@ dependencies = [
 ]
 
 [[package]]
+name = "actix-ip-filter"
+version = "0.3.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "74a128eb37155b02cf691d55ad309b2bcae0902acfbb6e261f9e0d4ff4198602"
+dependencies = [
+ "actix-service",
+ "actix-web",
+ "futures-util",
+ "glob",
+]
+
+[[package]]
 name = "actix-macros"
 version = "0.2.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -658,6 +670,12 @@ dependencies = [
 ]
 
 [[package]]
+name = "glob"
+version = "0.3.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "d2fabcfbdc87f4758337ca535fb41a6d701b65693ce38287d856d1674551ec9b"
+
+[[package]]
 name = "h2"
 version = "0.3.15"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -707,6 +725,8 @@ checksum = "7f24254aa9a54b5c858eaee2f5bccdb46aaf0e486a595ed5fd8f86ba55232a70"
 name = "homebot"
 version = "0.1.0"
 dependencies = [
+ "actix-ip-filter",
+ "actix-service",
  "actix-web",
  "anyhow",
  "async-trait",
@@ -714,6 +734,7 @@ dependencies = [
  "env_logger",
  "log",
  "openssl",
+ "rand",
  "reqwest",
  "serde",
  "serde_json",

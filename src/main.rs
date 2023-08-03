@@ -1,6 +1,8 @@
 use anyhow::Result;
 use env_logger::Env;
+use std::env;
 use std::error::Error;
+use std::path::PathBuf;
 use std::sync::Arc;
 use telegram_bot::opentmeteo::OpenMeteo;
 use telegram_bot::server::BotServer;
@@ -24,13 +26,14 @@ async fn main() -> Result<(), Box<dyn Error>> {
     let token = server.bot.get_token().to_string();
 
     let signal_handler = tokio::spawn(async {
-        let mut sigterm = signal(SignalKind::terminate()).expect("Failed to create signal handler terminate");
+        let mut sigterm =
+            signal(SignalKind::terminate()).expect("Failed to create signal handler terminate");
         sigterm.recv().await;
         println!("signal received. Shutting down...");
         std::process::exit(0);
     });
 
-    env_logger::init_from_env(Env::default().default_filter_or("info"));
+    env_logger::init_from_env(Env::default().default_filter_or("debug"));
     tokio::spawn(async move {
         loop {
             if !webhook_ip.is_empty() && webhook_ip != current_ip {
@@ -38,8 +41,9 @@ async fn main() -> Result<(), Box<dyn Error>> {
                     "IP has changed(old = {}, new = {}), calling restart.sh ...",
                     current_ip, webhook_ip
                 );
-                let path = "/home/mohamed/personal/homebot/";
-                let output = Command::new(format!("{}/restart.sh", path))
+                let mut restart_script = PathBuf::from(env::current_dir().unwrap());
+                restart_script.push("restart.sh");
+                let output = Command::new(restart_script)
                     .arg(&current_ip)
                     .arg(&token)
                     .output()

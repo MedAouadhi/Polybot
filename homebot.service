@@ -8,6 +8,7 @@ Restart=always
 RestartSec=1
 User=mohamed
 ExecStart= /home/mohamed/.cargo/bin/cargo run /home/mohamed/personal/homebot/Cargo.toml
+WorkingDirectory=/home/mohamed/personal/homebot
 
 [Install]
 WantedBy=multi-user.target

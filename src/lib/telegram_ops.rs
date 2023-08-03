@@ -1,11 +1,12 @@
-use super::opentmeteo::OpenMeteo;
 use super::types::{Message, Response, WeatherProvider, Webhook};
 use anyhow::{bail, Context, Result};
 use async_trait::async_trait;
+use rand::Rng;
 use reqwest::header::CONTENT_TYPE;
 use serde::Deserialize;
 use serde_json::{json, Value};
-use std::fs;
+use std::path::PathBuf;
+use std::{env, fs};
 use toml;
 
 #[derive(Deserialize, Debug)]
@@ -17,6 +18,7 @@ struct Config {
 pub trait Bot: Send + Sync + 'static {
     async fn handle_message(&self, msg: Message) -> Result<()>;
     async fn get_webhook_ip(&self) -> Result<String>;
+    fn get_server_ips(&self) -> Result<Vec<&'static str>>;
 }
 
 #[derive(Deserialize, Debug, Clone)]
@@ -28,7 +30,6 @@ struct BotConfig {
 #[derive(Clone)]
 pub struct TelegramBot<T: WeatherProvider> {
     client: reqwest::Client,
-    current_ip: Option<String>,
     weather: T,
     config: BotConfig,
 }
@@ -37,7 +38,6 @@ impl<T: WeatherProvider> TelegramBot<T> {
     pub fn new(weather: T) -> Self {
         let conf = Self::get_config().unwrap();
         TelegramBot {
-            current_ip: None,
             client: reqwest::Client::new(),
             config: conf.bot,
             weather: weather,
@@ -49,15 +49,9 @@ impl<T: WeatherProvider> TelegramBot<T> {
     }
 
     fn get_config() -> Result<Config> {
-        let path = std::env::current_dir()
-            .unwrap()
-            .into_os_string()
-            .into_string()
-            .unwrap();
-
-        let file = format!("/home/mohamed/personal/homebot/config.toml");
-        println!("{:?}", file);
-        let toml_str = fs::read_to_string(file)?;
+        let mut config_file = PathBuf::from(env::current_dir().unwrap());
+        config_file.push("config.toml");
+        let toml_str = fs::read_to_string(config_file)?;
         let map: Config = toml::from_str(&toml_str)?;
         println!("{:#?}", map);
         Ok(map)
@@ -117,6 +111,7 @@ impl<T: WeatherProvider + 'static> Bot for TelegramBot<T> {
                     "Error getting the temp".into()
                 }
             }
+            Some("/dice") => rand::thread_rng().gen_range(1..=6).to_string(),
             Some("hello") => "hello back :)".into(),
             _ => "did not understand!".into(),
         };
@@ -139,4 +134,23 @@ impl<T: WeatherProvider + 'static> Bot for TelegramBot<T> {
             bail!("Could not get correct webhook");
         }
     }
+
+    fn get_server_ips(&self) -> Result<Vec<&'static str>> {
+        // allow the telegram servers IP address
+        // According to https://core.telegram.org/bots/webhooks
+        // the allowed IP addresses would be 149.154.160.0/20 and 91.108.4.0/22
+        Ok(vec![
+            "91.108.4.*",
+            "91.108.5.*",
+            "91.108.6.*",
+            "91.108.7.*",
+            "149.154.16?.*",
+            "149.154.17?.*",
+        ])
+    }
+}
+
+#[cfg(test)]
+mod test {
+    fn test_new() {}
 }
