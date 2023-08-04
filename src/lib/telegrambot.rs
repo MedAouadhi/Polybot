@@ -1,18 +1,19 @@
-use super::types::{BotConfig, Config, Message, Response, WeatherProvider, Webhook};
+use std::path::PathBuf;
+
+use super::types::{BotConfig, Message, Response, WeatherProvider, Webhook};
 use anyhow::{bail, Context, Result};
 use async_trait::async_trait;
 use rand::Rng;
-use reqwest::header::CONTENT_TYPE;
+use reqwest::{header::CONTENT_TYPE, multipart, Body};
 use serde_json::{json, Value};
-use std::path::PathBuf;
-use std::{env, fs};
-use toml;
+use tokio::fs::File;
+use tokio_util::codec::{BytesCodec, FramedRead};
 
 #[async_trait]
 pub trait Bot: Send + Sync + 'static {
     async fn handle_message(&self, msg: Message) -> Result<()>;
     async fn get_webhook_ip(&self) -> Result<String>;
-    fn get_server_ips(&self) -> Result<Vec<&'static str>>;
+    fn get_webhook_ips(&self) -> Result<Vec<&'static str>>;
 }
 
 #[derive(Clone)]
@@ -46,7 +47,7 @@ impl<T: WeatherProvider> TelegramBot<T> {
             .body(json!({"chat_id": id, "text": msg}).to_string())
             .send()
             .await
-            .context("Could send the reply")?;
+            .context("Could not send the reply")?;
         Ok(())
     }
 
@@ -61,6 +62,31 @@ impl<T: WeatherProvider> TelegramBot<T> {
             .await?;
         let ip: Value = serde_json::from_str(&resp).context("Failed to parse the json output")?;
         Ok(ip["origin"].to_string().replace('"', ""))
+    }
+
+    pub async fn update_webhook_cert(&self, cert: PathBuf, ip: &str) -> Result<()> {
+        // get the pubkey file
+        let certificate = File::open(cert).await?;
+        let stream = FramedRead::new(certificate, BytesCodec::new());
+        let file_body = Body::wrap_stream(stream);
+        let cert_form = multipart::Part::stream(file_body);
+
+        let url = format!(
+            "https://api.telegram.org/bot{}/setWebhook",
+            self.config.token
+        );
+
+        let form = multipart::Form::new()
+            .text("url", format!("https://{}", ip))
+            .part("certificate", cert_form);
+
+        self.client
+            .post(url)
+            .multipart(form)
+            .send()
+            .await
+            .context("Could not set the webhook")?;
+        Ok(())
     }
 }
 
@@ -113,7 +139,7 @@ impl<T: WeatherProvider + 'static> Bot for TelegramBot<T> {
         }
     }
 
-    fn get_server_ips(&self) -> Result<Vec<&'static str>> {
+    fn get_webhook_ips(&self) -> Result<Vec<&'static str>> {
         // allow the telegram servers IP address
         // According to https://core.telegram.org/bots/webhooks
         // the allowed IP addresses would be 149.154.160.0/20 and 91.108.4.0/22

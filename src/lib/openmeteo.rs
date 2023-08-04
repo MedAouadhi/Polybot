@@ -74,13 +74,13 @@ struct Geolocation {
 
 #[derive(Clone, Default)]
 pub struct OpenMeteo {
-    api_key: String,
+    api_key: Option<String>,
     client: reqwest::Client,
     favourite_city: String,
 }
 
 impl OpenMeteo {
-    pub fn new(api_key: String, default_city: String) -> Self {
+    pub fn new(api_key: Option<String>, default_city: String) -> Self {
         Self {
             api_key: api_key,
             client: reqwest::Client::new(),
@@ -154,7 +154,7 @@ mod test {
 
     #[tokio::test]
     async fn test_get_geolocation() {
-        let weather = OpenMeteo::new("".to_string(), "Berlin".to_string());
+        let weather = OpenMeteo::new(None, "Berlin".to_string());
         assert_eq!(
             weather.get_geolocation("Bizerte".to_string()).await.ok(),
             Some(Some((37.27442f32, 9.87391f32)))

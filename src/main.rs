@@ -1,7 +1,9 @@
+use anyhow::Ok;
 use anyhow::Result;
 use env_logger::Env;
 use std::env;
 use std::error::Error;
+use std::path::Path;
 use std::path::PathBuf;
 use std::sync::Arc;
 use telegram_bot::openmeteo::OpenMeteo;
@@ -25,11 +27,15 @@ async fn get_config() -> Result<Config> {
     Ok(map)
 }
 
+async fn generate_certificate(name: &'static str, ip: &str) -> Result<PathBuf> {
+    todo!()
+}
+
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn Error>> {
     let conf = get_config().await?;
     let bot = Arc::new(MyBot::new(
-        OpenMeteo::new("api_key".to_string(), "Lehnitz".to_string()),
+        OpenMeteo::new(None, "Lehnitz".to_string()),
         conf.bot,
     ));
     let server = BotServer::new(conf.server, bot);

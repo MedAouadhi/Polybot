@@ -8,7 +8,7 @@ use actix_web::{dev::Server, post, web, App, HttpResponse, HttpServer, Responder
 use anyhow::{Ok, Result};
 use openssl::ssl::{SslAcceptor, SslFiletype, SslMethod};
 use std::env;
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 use std::sync::Arc;
 
 pub struct BotServer<B: Bot> {
@@ -48,7 +48,7 @@ impl<B: Bot> BotServer<B> {
                 .app_data(web::Data::new(new_bot.clone()))
                 .service(handler)
                 .wrap(Logger::default())
-                .wrap(IPFilter::new().allow(new_bot.get_server_ips().unwrap()))
+                .wrap(IPFilter::new().allow(new_bot.get_webhook_ips().unwrap()))
         })
         .shutdown_timeout(3)
         .bind_openssl(format!("{}:{}", config.ip, config.port), builder)
@@ -56,9 +56,13 @@ impl<B: Bot> BotServer<B> {
         .run();
 
         BotServer {
-            bot: bot.clone(),
+            bot: bot,
             worker: server,
         }
+    }
+
+    pub async fn generate_certificate(&self, name: &'static str) -> Result<&Path> {
+        Ok(Path::new(name))
     }
 
     pub async fn start(self) -> Result<()> {
