@@ -61,10 +61,6 @@ impl<B: Bot> BotServer<B> {
         }
     }
 
-    pub async fn generate_certificate(&self, name: &'static str) -> Result<&Path> {
-        Ok(Path::new(name))
-    }
-
     pub async fn start(self) -> Result<()> {
         self.worker.await?;
         Ok(())

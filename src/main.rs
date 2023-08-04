@@ -1,9 +1,7 @@
-use anyhow::Ok;
 use anyhow::Result;
 use env_logger::Env;
 use std::env;
 use std::error::Error;
-use std::path::Path;
 use std::path::PathBuf;
 use std::sync::Arc;
 use telegram_bot::openmeteo::OpenMeteo;
@@ -25,10 +23,6 @@ async fn get_config() -> Result<Config> {
     let map: Config = toml::from_str(&toml_str)?;
     println!("{:#?}", map);
     Ok(map)
-}
-
-async fn generate_certificate(name: &'static str, ip: &str) -> Result<PathBuf> {
-    todo!()
 }
 
 #[tokio::main]
