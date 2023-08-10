@@ -1,76 +1,89 @@
 use anyhow::Result;
-use env_logger::Env;
-use std::env;
 use std::error::Error;
 use std::path::PathBuf;
 use std::sync::Arc;
 use telegram_bot::openmeteo::OpenMeteo;
 use telegram_bot::server::BotServer;
-use telegram_bot::telegrambot::Bot;
-use telegram_bot::telegrambot::TelegramBot;
-use telegram_bot::Config;
-use tokio::fs;
-use tokio::process::Command;
+use telegram_bot::telegrambot::{Bot, TelegramBot};
+use telegram_bot::utils;
 use tokio::select;
-use tokio::signal::unix::{signal, SignalKind};
+use tokio::sync::Notify;
+use tokio::time::Duration;
+use tracing::{debug, error, info};
 
 type MyBot = TelegramBot<OpenMeteo>;
-
-async fn get_config() -> Result<Config> {
-    let mut config_file = PathBuf::from(env::current_dir().unwrap());
-    config_file.push("config.toml");
-    let toml_str = fs::read_to_string(config_file).await?;
-    let map: Config = toml::from_str(&toml_str)?;
-    println!("{:#?}", map);
-    Ok(map)
-}
+const IP_CHECK_TIME: Duration = Duration::from_secs(10);
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn Error>> {
-    let conf = get_config().await?;
+    let conf = utils::get_config().await?;
     let bot = Arc::new(MyBot::new(
         OpenMeteo::new(None, "Lehnitz".to_string()),
-        conf.bot,
+        conf.clone().bot,
     ));
-    let server = BotServer::new(conf.server, bot);
-    let current_ip = server.bot.get_ip().await?;
-    let webhook_ip = server.bot.get_webhook_ip().await?;
-    let token = server.bot.get_token().to_string();
 
-    let signal_handler = tokio::spawn(async {
-        let mut sigterm =
-            signal(SignalKind::terminate()).expect("Failed to create signal handler terminate");
-        sigterm.recv().await;
-        println!("signal received. Shutting down...");
-        std::process::exit(0);
-    });
+    let bot_clone = bot.clone();
+    let conf_clone = conf.clone();
+    let config_changed = Arc::new(Notify::new());
+    let config_changed_clone = config_changed.clone();
 
-    env_logger::init_from_env(Env::default().default_filter_or("debug"));
+    // Configure tracing
+    tracing_subscriber::fmt()
+        .with_env_filter(tracing_subscriber::EnvFilter::from_default_env())
+        .init();
+
     tokio::spawn(async move {
         loop {
-            if !webhook_ip.is_empty() && webhook_ip != current_ip {
-                println!(
-                    "IP has changed(old = {}, new = {}), calling restart.sh ...",
-                    current_ip, webhook_ip
-                );
-                let mut restart_script = PathBuf::from(env::current_dir().unwrap());
-                restart_script.push("restart.sh");
-                let output = Command::new(restart_script)
-                    .arg(&current_ip)
-                    .arg(&token)
-                    .output()
-                    .await
-                    .expect("Problem with executing the command");
-                println!("output is = {:#?}", String::from_utf8(output.stdout));
-                tokio::time::sleep(tokio::time::Duration::from_secs(60)).await;
+            // explicity handle the result as we are in async block
+            if let Ok(current_ip) = utils::get_ip().await {
+                debug!("Current ip = {:?}", current_ip);
+                if !bot_clone.is_webhook_configured(&current_ip).await.unwrap() {
+                    info!("Certificate is not correclty configured, configuring ...");
+                } else {
+                    // the webhook is already set
+                    tokio::time::sleep(IP_CHECK_TIME).await;
+                    continue;
+                }
+
+                // generate new certificate
+                if utils::generate_certificate(
+                    PathBuf::from(&conf.server.pubkey_path),
+                    PathBuf::from(&conf.server.privkey_path),
+                    &current_ip,
+                )
+                .await
+                .is_ok()
+                {
+                    if bot_clone
+                        .update_webhook_cert(PathBuf::from(&conf.server.pubkey_path), &current_ip)
+                        .await
+                        .is_err()
+                    {
+                        error!("failed to upload the certificate!");
+                    } else {
+                        // notify the server that a new certificate has been uploaded
+                        config_changed_clone.notify_one();
+                    }
+                } else {
+                    error!("The certificate generation failed!");
+                }
             }
+            tokio::time::sleep(IP_CHECK_TIME).await;
         }
     });
-    println!("Started the server ...");
 
-    select! {
-        _ = signal_handler => {},
-        _ = server.start() => {}
+    loop {
+        let mut server = BotServer::new(conf_clone.server.clone(), bot.clone());
+        select! {
+            _ = server.start() => {break;},
+            // A server restart needs to happen as the certificate has been changed.
+            _ = config_changed.notified() => {
+                debug!("Received certificate update notification, restarting server ...");
+                server.stop().await;
+                continue;
+            }
+        }
     }
+
     Ok(())
 }

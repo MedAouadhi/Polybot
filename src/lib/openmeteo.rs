@@ -176,6 +176,8 @@ mod test {
             .get_temperature("Bizerte".to_string())
             .await
             .unwrap();
+        // This test will fail due to either something breaking, or
+        // to global warming!
         assert!(temp > -10.0f32);
         assert!(temp < 50.0f32);
         assert_eq!(weather.get_temperature("Mordor".to_string()).await, None);

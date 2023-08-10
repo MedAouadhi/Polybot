@@ -2,8 +2,13 @@ use async_trait::async_trait;
 use chrono::{DateTime, Utc};
 use serde::Deserialize;
 use serde_with::TimestampSeconds;
+use tracing::debug;
 
-#[derive(Deserialize, Debug)]
+#[derive(Deserialize)]
+pub struct Affirmation {
+    pub affirmation: String,
+}
+#[derive(Deserialize, Debug, Clone)]
 pub struct Config {
     pub bot: BotConfig,
     pub server: ServerConfig,
@@ -110,10 +115,10 @@ pub struct Response<T> {
 #[derive(Deserialize)]
 pub struct Webhook {
     url: String,
-    has_custom_certificate: bool,
+    pub has_custom_certificate: bool,
     pending_update_count: u32,
     max_connections: u32,
-    pub ip_address: String,
+    pub ip_address: Option<String>,
 }
 
 impl<T: for<'a> Deserialize<'a>> From<String> for Response<T> {
@@ -125,7 +130,7 @@ impl<T: for<'a> Deserialize<'a>> From<String> for Response<T> {
 impl From<String> for Update {
     fn from(value: String) -> Self {
         let update_str = serde_json::from_str(&value).unwrap();
-        println!("{:#?}", update_str);
+        debug!("{:#?}", update_str);
         return update_str;
     }
 }

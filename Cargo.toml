@@ -6,26 +6,27 @@ edition = "2021"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-reqwest = {version = "0.11", features = ["multipart", "stream"]}
-tokio = {version = "1.19", features = ["full"]}
+reqwest = { version = "0.11", features = ["multipart", "stream", "blocking"] }
+tokio = { version = "1.30.0", features = ["full"] }
 serde_json = "1.0"
 anyhow = "1.0"
-serde = {version = "1.0.2", features = ["derive"]}
-token-generator = "0.1.0"
-actix-web = {version = "4", features = ["openssl"]}
+serde = { version = "1.0.2", features = ["derive"] }
+actix-web = { version = "4", features = ["openssl"] }
 openssl = "0.10"
 toml = "0.7.1"
-serde_with = {version = "3.0.0", features = ["chrono"]}
+serde_with = { version = "3.0.0", features = ["chrono"] }
 chrono = "0.4.26"
 async-trait = "0.1.72"
-signal-hook-tokio = "0.3.1"
-log = "0.4.19"
-env_logger = "0.10.0"
 rand = "0.8.5"
 actix-service = "2.0.2"
 actix-ip-filter = "0.3.1"
-rcgen = "0.11.1"
 tokio-util = { version = "0.7.8", features = ["codec"] }
+tracing = "0.1.37"
+tracing-subscriber = { version = "0.3.17", features = ["env-filter"] }
+tracing-actix-web = "0.7.6"
+actix-server = "2.2.0"
+socket2 = "0.5.3"
+futures = "0.3.28"
 
 [[bin]]
 name = "homebot"
