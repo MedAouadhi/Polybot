@@ -7,33 +7,45 @@ use serde::Deserialize;
 
 #[derive(Deserialize, Debug)]
 struct HourlyUnits {
+    #[serde(alias = "time")]
     _time: String,
+    #[serde(alias = "temperature_2m")]
     _temperature_2m: String,
 }
 
 #[derive(Deserialize, Debug)]
 struct Hourly {
+    #[serde(alias = "time")]
     _time: Vec<String>,
     temperature_2m: Vec<f32>,
 }
 
 #[derive(Deserialize, Debug)]
 struct Forecast {
+    #[serde(alias = "latitude")]
     _latitude: f32,
+    #[serde(alias = "longitude")]
     _longitude: f32,
+    #[serde(alias = "generationtime_ms")]
     _generationtime_ms: f32,
+    #[serde(alias = "utc_offset_seconds")]
     _utc_offset_seconds: u32,
+    #[serde(alias = "timezone")]
     _timezone: String,
+    #[serde(alias = "timezone_abbreviation")]
     _timezone_abbreviation: String,
     #[serde(skip)]
     _elevation: f32,
+    #[serde(alias = "hourly_units")]
     _hourly_units: HourlyUnits,
     hourly: Hourly,
 }
 
 #[derive(Deserialize, Debug)]
 struct City {
+    #[serde(alias = "id")]
     _id: u32,
+    #[serde(alias = "name")]
     _name: String,
     latitude: f32,
     longitude: f32,
@@ -49,6 +61,7 @@ struct City {
     _admin3_id: u32,
     #[serde(skip)]
     _admin4_id: u32,
+    #[serde(alias = "timezone")]
     _timezone: String,
     #[serde(skip)]
     _population: u32,
@@ -69,6 +82,7 @@ struct City {
 #[derive(Deserialize, Debug)]
 struct Geolocation {
     results: Option<Vec<City>>,
+    #[serde(alias = "generationtime_ms")]
     _generationtime_ms: f32,
 }
 

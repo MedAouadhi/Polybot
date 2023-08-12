@@ -45,29 +45,34 @@ pub struct Chat {
 #[serde_with::serde_as]
 #[derive(Deserialize, Clone, Debug)]
 pub struct Message {
+    #[serde(alias = "message_id")]
     _message_id: u64,
+    #[serde(alias = "from")]
     _from: User,
     pub chat: Chat,
     #[serde_as(as = "TimestampSeconds<i64>")]
+    #[serde(alias = "date")]
     _date: DateTime<Utc>,
     pub text: String,
     #[serde(skip)]
+    #[serde(alias = "entities")]
     _entities: String,
 }
 
 #[derive(Deserialize, Clone, Debug)]
+#[allow(dead_code)]
 pub struct User {
-    _id: u64,
-    _is_bot: bool,
-    _first_name: String,
-    _last_name: Option<String>,
-    _username: Option<String>,
-    _language_code: Option<String>,
-    _is_premium: Option<bool>,
-    _added_to_attachment_menu: Option<bool>,
-    _can_join_groups: Option<bool>,
-    _can_read_all_group_messages: Option<bool>,
-    _supports_inline_queries: Option<bool>,
+    id: u64,
+    is_bot: bool,
+    first_name: String,
+    last_name: Option<String>,
+    username: Option<String>,
+    language_code: Option<String>,
+    is_premium: Option<bool>,
+    added_to_attachment_menu: Option<bool>,
+    can_join_groups: Option<bool>,
+    can_read_all_group_messages: Option<bool>,
+    supports_inline_queries: Option<bool>,
 }
 
 #[serde_with::serde_as]
@@ -116,9 +121,12 @@ pub struct Response<T> {
 
 #[derive(Deserialize)]
 pub struct Webhook {
+    #[serde(alias = "url")]
     _url: String,
     pub has_custom_certificate: bool,
+    #[serde(alias = "pending_update_count")]
     _pending_update_count: u32,
+    #[serde(alias = "max_connections")]
     _max_connections: u32,
     pub ip_address: Option<String>,
 }
