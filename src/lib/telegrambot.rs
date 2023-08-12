@@ -157,7 +157,6 @@ impl<T: WeatherProvider + 'static> Bot for TelegramBot<T> {
             "91.108.7.*",
             "149.154.16?.*",
             "149.154.17?.*",
-            "91.108.6.66",
         ])
     }
 }
