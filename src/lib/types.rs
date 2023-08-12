@@ -45,38 +45,38 @@ pub struct Chat {
 #[serde_with::serde_as]
 #[derive(Deserialize, Clone, Debug)]
 pub struct Message {
-    message_id: u64,
-    from: User,
+    _message_id: u64,
+    _from: User,
     pub chat: Chat,
     #[serde_as(as = "TimestampSeconds<i64>")]
-    date: DateTime<Utc>,
+    _date: DateTime<Utc>,
     pub text: String,
     #[serde(skip)]
-    entities: String,
+    _entities: String,
 }
 
 #[derive(Deserialize, Clone, Debug)]
 pub struct User {
-    id: u64,
-    is_bot: bool,
-    first_name: String,
-    last_name: Option<String>,
-    username: Option<String>,
-    language_code: Option<String>,
-    is_premium: Option<bool>,
-    added_to_attachment_menu: Option<bool>,
-    can_join_groups: Option<bool>,
-    can_read_all_group_messages: Option<bool>,
-    supports_inline_queries: Option<bool>,
+    _id: u64,
+    _is_bot: bool,
+    _first_name: String,
+    _last_name: Option<String>,
+    _username: Option<String>,
+    _language_code: Option<String>,
+    _is_premium: Option<bool>,
+    _added_to_attachment_menu: Option<bool>,
+    _can_join_groups: Option<bool>,
+    _can_read_all_group_messages: Option<bool>,
+    _supports_inline_queries: Option<bool>,
 }
 
 #[serde_with::serde_as]
 #[derive(Deserialize, Debug)]
 pub struct ChatMemberUpdated {
     pub chat: Chat,
-    from: User,
+    _from: User,
     #[serde_as(as = "TimestampSeconds<i64>")]
-    date: DateTime<Utc>,
+    _date: DateTime<Utc>,
 }
 
 #[derive(Deserialize, Debug)]
@@ -86,6 +86,7 @@ pub struct Update {
     pub edited_message: Option<Message>,
     pub channel_post: Option<Message>,
     pub edited_channel_post: Option<Message>,
+    /*
     #[serde(skip)]
     pub inline_query: Option<String>,
     #[serde(skip)]
@@ -104,6 +105,7 @@ pub struct Update {
     chat_member: Option<ChatMemberUpdated>,
     #[serde(skip)]
     chat_join_request: Option<String>,
+    */
 }
 
 #[derive(Deserialize, Debug)]
@@ -114,10 +116,10 @@ pub struct Response<T> {
 
 #[derive(Deserialize)]
 pub struct Webhook {
-    url: String,
+    _url: String,
     pub has_custom_certificate: bool,
-    pending_update_count: u32,
-    max_connections: u32,
+    _pending_update_count: u32,
+    _max_connections: u32,
     pub ip_address: Option<String>,
 }
 

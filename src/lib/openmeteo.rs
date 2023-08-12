@@ -7,74 +7,74 @@ use serde::Deserialize;
 
 #[derive(Deserialize, Debug)]
 struct HourlyUnits {
-    time: String,
-    temperature_2m: String,
+    _time: String,
+    _temperature_2m: String,
 }
 
 #[derive(Deserialize, Debug)]
 struct Hourly {
-    time: Vec<String>,
+    _time: Vec<String>,
     temperature_2m: Vec<f32>,
 }
 
 #[derive(Deserialize, Debug)]
 struct Forecast {
-    latitude: f32,
-    longitude: f32,
-    generationtime_ms: f32,
-    utc_offset_seconds: u32,
-    timezone: String,
-    timezone_abbreviation: String,
+    _latitude: f32,
+    _longitude: f32,
+    _generationtime_ms: f32,
+    _utc_offset_seconds: u32,
+    _timezone: String,
+    _timezone_abbreviation: String,
     #[serde(skip)]
-    elevation: f32,
-    hourly_units: HourlyUnits,
+    _elevation: f32,
+    _hourly_units: HourlyUnits,
     hourly: Hourly,
 }
 
 #[derive(Deserialize, Debug)]
 struct City {
-    id: u32,
-    name: String,
+    _id: u32,
+    _name: String,
     latitude: f32,
     longitude: f32,
     #[serde(skip)]
-    elevation: f32,
+    _elevation: f32,
     #[serde(skip)]
-    feature_code: String,
+    _feature_code: String,
     #[serde(skip)]
-    country_code: String,
+    _country_code: String,
     #[serde(skip)]
-    admin1_id: u32,
+    _admin1_id: u32,
     #[serde(skip)]
-    admin3_id: u32,
+    _admin3_id: u32,
     #[serde(skip)]
-    admin4_id: u32,
-    timezone: String,
+    _admin4_id: u32,
+    _timezone: String,
     #[serde(skip)]
-    population: u32,
+    _population: u32,
     #[serde(skip)]
-    postcodes: Vec<String>,
+    _postcodes: Vec<String>,
     #[serde(skip)]
-    country_id: u32,
+    _country_id: u32,
     #[serde(skip)]
-    country: String,
+    _country: String,
     #[serde(skip)]
-    admin1: String,
+    _admin1: String,
     #[serde(skip)]
-    admin3: String,
+    _admin3: String,
     #[serde(skip)]
-    admin4: String,
+    _admin4: String,
 }
 
 #[derive(Deserialize, Debug)]
 struct Geolocation {
     results: Option<Vec<City>>,
-    generationtime_ms: f32,
+    _generationtime_ms: f32,
 }
 
 #[derive(Clone, Default)]
 pub struct OpenMeteo {
-    api_key: Option<String>,
+    _api_key: Option<String>,
     client: reqwest::Client,
     favourite_city: String,
 }
@@ -82,7 +82,7 @@ pub struct OpenMeteo {
 impl OpenMeteo {
     pub fn new(api_key: Option<String>, default_city: String) -> Self {
         Self {
-            api_key: api_key,
+            _api_key: api_key,
             client: reqwest::Client::new(),
             favourite_city: default_city,
         }
@@ -139,7 +139,7 @@ impl WeatherProvider for OpenMeteo {
         None
     }
 
-    async fn get_temp_forecast(&self, city: String, time: ForecastTime) -> Option<f32> {
+    async fn get_temp_forecast(&self, _city: String, _time: ForecastTime) -> Option<f32> {
         todo!()
     }
 

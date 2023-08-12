@@ -8,7 +8,6 @@ use rand::Rng;
 use reqwest::multipart::Part;
 use reqwest::{header::CONTENT_TYPE, multipart};
 use serde_json::json;
-use serde_with::DeserializeAs;
 use tokio::fs;
 use tracing::debug;
 
@@ -161,9 +160,4 @@ impl<T: WeatherProvider + 'static> Bot for TelegramBot<T> {
             "91.108.6.66",
         ])
     }
-}
-
-#[cfg(test)]
-mod test {
-    fn test_new() {}
 }

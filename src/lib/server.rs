@@ -4,7 +4,7 @@ use super::telegrambot::Bot;
 use super::types::Update;
 use actix_ip_filter::IPFilter;
 use actix_server::{Server, ServerHandle};
-use actix_web::{post, rt, web, App, HttpResponse, HttpServer, Responder};
+use actix_web::{post, web, App, HttpResponse, HttpServer, Responder};
 use anyhow::{Ok, Result};
 use openssl::ssl::{SslAcceptor, SslFiletype, SslMethod};
 use socket2::{Domain, Protocol, Socket, Type};

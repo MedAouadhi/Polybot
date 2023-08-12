@@ -7,7 +7,7 @@ Type=simple
 Restart=always
 RestartSec=1
 User=mohamed
-ExecStart= /home/mohamed/.cargo/bin/cargo run --release /home/mohamed/personal/homebot/Cargo.toml
+ExecStart= RUST_LOG=debug /home/mohamed/.cargo/bin/cargo run --release /home/mohamed/personal/homebot/Cargo.toml
 WorkingDirectory=/home/mohamed/personal/homebot
 
 [Install]
