@@ -74,6 +74,10 @@ async fn main() -> Result<(), Box<dyn Error>> {
 
     loop {
         let mut server = BotServer::new(conf_clone.server.clone(), bot.clone());
+
+        // the flow will block here, until one of the branches terminates, which is due to:
+        // - The server terminates by itself (e.g crash ..)
+        // - The system's IP has changed
         select! {
             _ = server.start() => {break;},
             // A server restart needs to happen as the certificate has been changed.

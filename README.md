@@ -2,8 +2,8 @@
 
 [![Rust](https://github.com/MedAouadhi/homebot/actions/workflows/rust.yml/badge.svg?branch=master)](https://github.com/MedAouadhi/homebot/actions/workflows/rust.yml)
 
-A home server using telegram bot api, useful to respond to commands. To be used for home automation
-or anything else.
+A bot server using telegram bot api, useful to respond to custom commands. To be used for home automation
+or anything your mind.
 
 ## Current supported commands
 - `/ip` : Gives back the current public ipv4 of the bot's network.
@@ -17,14 +17,16 @@ or by setting a `webhook` and let Telegram sends us updates. This, however, nece
 ```
 openssl req -newkey rsa:2048 -sha256 -nodes -keyout YOURPRIVATE.key -x509 -days 365 -out YOURPUBLIC.pem -subj "/C=US/ST=New York/L=Brooklyn/O=homebot Company/CN=11.11.11.11"
 ```
-> The bot can generate its own certificates now. No need to generate it manually.
+---
+**Note:** The bot can generate its own certificates now. No need to generate it manually.
 
+---
 but apparently when the ip address changes, the certificate becomes invalid.
 You can get away from this mess by using a static ip straight from your internet provider or using no-ip and similar services.
 
 Because I want the cheap stuff, I want to use my own public ip address. 
 
-To do that, the main loop start an async task along with the main loop to check if the current ip of the bot and the one (the CN field)
+To do that, we spawn an async task along with the main loop to check if the current ip of the bot and the one (the CN field)
 in the uploaded certificate match, if not (most likely your router has restarted, or you moved the bot to another place), it will generate
 a new self signed certificate using the new ip, and uploads it to Telegram updating the webhook.
 
