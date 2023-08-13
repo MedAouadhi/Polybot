@@ -5,11 +5,21 @@
 A bot server using telegram bot api, useful to respond to custom commands. To be used for home automation
 or anything your mind.
 
+The main idea for this project, is that I wanted to ssh to my workstation (installed in my home) from anywhere, **without paying for a static ip or a domain, and without using any 3rd party software**, I simply need the public ip address of my home network. Well the problem is that the ip address can change at any time, so I needed a software that is running locally to the network, which publishes the ip address whenever I ask it.
+
+Come telegram bots! What is a better interface than a chat conversation in an app that I already use in my day to day life. With the bonus of adding
+more functionnality to the bot whenever I feel so.
+
 ## Current supported commands
 - `/ip` : Gives back the current public ipv4 of the bot's network.
 - `/affirm` Sends back motivational quotes.
 - `/dice` Generates a random number between 1 and 6.
 - `/temp [city]` Gives back the current temprature of any city in the world.
+
+## To come
+- clever assistant with long term memory (using llama-2) using [llm-chain](https://github.com/sobelio/llm-chain).
+    - Answers any question
+    - Can read my documents and be queried about them.
 
 ## Description
 There are mainly two ways to receive messages from Telegram servers, either by polling (shitty idea) using `getUpdates` API,
