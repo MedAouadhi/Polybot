@@ -1,5 +1,7 @@
+use std::collections::HashMap;
 use std::path::PathBuf;
 use std::sync::atomic::{AtomicBool, Ordering};
+use std::sync::Arc;
 
 use crate::llm::Agent;
 
@@ -7,11 +9,14 @@ use super::types::{Affirmation, BotConfig, Message, Response, WeatherProvider, W
 use super::utils::get_ip;
 use anyhow::{bail, Context, Result};
 use async_trait::async_trait;
+use chrono::{DateTime, Utc};
 use rand::Rng;
 use reqwest::multipart::Part;
 use reqwest::{header::CONTENT_TYPE, multipart};
 use serde_json::json;
 use tokio::fs;
+use tokio::sync::Mutex;
+use tokio::time::Duration;
 use tracing::debug;
 
 #[async_trait]
@@ -20,13 +25,40 @@ pub trait Bot: Send + Sync + 'static {
     async fn is_webhook_configured(&self, ip: &str) -> Result<bool>;
     fn get_webhook_ips(&self) -> Result<Vec<&'static str>>;
 }
-// #[derive(Clone)]
 pub struct TelegramBot<T: WeatherProvider, L: Agent> {
     client: reqwest::Client,
     weather: T,
     config: BotConfig,
     llm_agent: Option<L>,
+    users: Arc<Mutex<HashMap<u64, BotUser>>>,
+}
+
+#[derive(Default)]
+pub struct BotUser {
     chat_mode: AtomicBool,
+    last_activity: DateTime<Utc>,
+}
+
+impl BotUser {
+    fn new() -> Self {
+        Self::default()
+    }
+
+    fn set_last_activity(&mut self, date: DateTime<Utc>) {
+        self.last_activity = date;
+    }
+
+    fn get_last_activity(&self) -> DateTime<Utc> {
+        self.last_activity
+    }
+
+    fn set_chat_mode(&self, state: bool) {
+        self.chat_mode.store(state, Ordering::Relaxed);
+    }
+
+    fn is_in_chat_mode(&self) -> bool {
+        self.chat_mode.load(Ordering::Relaxed)
+    }
 }
 
 impl<T: WeatherProvider, L: Agent> TelegramBot<T, L> {
@@ -49,7 +81,7 @@ impl<T: WeatherProvider, L: Agent> TelegramBot<T, L> {
             config: config,
             weather: weather,
             llm_agent: llm_agent,
-            chat_mode: AtomicBool::new(false),
+            users: Arc::new(Mutex::new(HashMap::new())),
         }
     }
 
@@ -124,8 +156,24 @@ impl<T: WeatherProvider + 'static, L: Agent + 'static> Bot for TelegramBot<T, L>
         let command;
         let argument;
 
+        let mut users = self.users.lock().await;
+
+        if users.get(&msg.from.id).is_none() {
+            // add the user in the hashmap
+            debug!(
+                "Adding the user (id = {}), (name = {}).",
+                msg.from.id, msg.from.first_name
+            );
+            users.insert(msg.from.id, BotUser::new());
+        };
+
+        let user = users.get_mut(&msg.from.id).unwrap();
+
+        // update the user activity
+        user.set_last_activity(chrono::Utc::now());
+
         // if we are in chat mode, interpret the message as llm ask request
-        if self.chat_mode.load(Ordering::Relaxed) && !msg.text.starts_with("/endchat") {
+        if user.is_in_chat_mode() && !msg.text.starts_with("/endchat") {
             command = Some("/ask");
             argument = msg.text;
         } else {
@@ -168,12 +216,12 @@ impl<T: WeatherProvider + 'static, L: Agent + 'static> Bot for TelegramBot<T, L>
             }
             Some("/chat") => {
                 debug!("Entering llm chat mode");
-                self.chat_mode.store(true, Ordering::Relaxed);
+                user.set_chat_mode(true);
                 "Let's talk!".into()
             }
             Some("/endchat") => {
                 debug!("Exiting llm chat mode");
-                self.chat_mode.store(false, Ordering::Relaxed);
+                user.set_chat_mode(false);
                 "See ya!".into()
             }
             Some("hello") => "hello back :)".into(),

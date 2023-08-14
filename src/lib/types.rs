@@ -47,8 +47,7 @@ pub struct Chat {
 pub struct Message {
     #[serde(alias = "message_id")]
     _message_id: u64,
-    #[serde(alias = "from")]
-    _from: User,
+    pub from: User,
     pub chat: Chat,
     #[serde_as(as = "TimestampSeconds<i64>")]
     #[serde(alias = "date")]
@@ -62,9 +61,9 @@ pub struct Message {
 #[derive(Deserialize, Clone, Debug)]
 #[allow(dead_code)]
 pub struct User {
-    id: u64,
+    pub id: u64,
     is_bot: bool,
-    first_name: String,
+    pub first_name: String,
     last_name: Option<String>,
     username: Option<String>,
     language_code: Option<String>,

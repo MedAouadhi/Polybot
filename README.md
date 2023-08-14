@@ -2,8 +2,7 @@
 
 [![Rust](https://github.com/MedAouadhi/homebot/actions/workflows/rust.yml/badge.svg?branch=master)](https://github.com/MedAouadhi/homebot/actions/workflows/rust.yml)
 
-A bot server using telegram bot api, useful to respond to custom commands. To be used for home automation
-or anything in your mind.
+A bot server using telegram bot api mostly using asynchronous IO, useful to respond to custom commands. To be used for home automation or anything in your mind.
 
 The main idea for this project, is that I wanted to ssh to my workstation (installed in my home) from anywhere, **without paying for a static ip or a domain, and without using any 3rd party software**, I simply need the public ip address of my home network. Well the problem is that the ip address can change at any time, so I needed a software that is running locally to the network, which publishes the ip address whenever I ask it.
 
