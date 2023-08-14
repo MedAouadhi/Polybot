@@ -3,7 +3,7 @@
 [![Rust](https://github.com/MedAouadhi/homebot/actions/workflows/rust.yml/badge.svg?branch=master)](https://github.com/MedAouadhi/homebot/actions/workflows/rust.yml)
 
 A bot server using telegram bot api, useful to respond to custom commands. To be used for home automation
-or anything your mind.
+or anything in your mind.
 
 The main idea for this project, is that I wanted to ssh to my workstation (installed in my home) from anywhere, **without paying for a static ip or a domain, and without using any 3rd party software**, I simply need the public ip address of my home network. Well the problem is that the ip address can change at any time, so I needed a software that is running locally to the network, which publishes the ip address whenever I ask it.
 
@@ -15,11 +15,14 @@ more functionnality to the bot whenever I feel so.
 - `/affirm` Sends back motivational quotes.
 - `/dice` Generates a random number between 1 and 6.
 - `/temp [city]` Gives back the current temprature of any city in the world.
-
+- `/ask [prompt]` Prompts the LLM agent for any single shot request.
+- `/chat` Starts **chat mode** which will interpret any following messages as prompts.
+- `/endchat` Exits the chat mode.
 ## To come
 - clever assistant with long term memory (using llama-2) using [llm-chain](https://github.com/sobelio/llm-chain).
-    - Answers any question
-    - Can read my documents and be queried about them.
+    - [x] Answers any question
+    - [ ] Can read my documents and be queried about them.
+- [ ] Add more tests, everywhere.
 
 ## Description
 There are mainly two ways to receive messages from Telegram servers, either by polling (shitty idea) using `getUpdates` API,

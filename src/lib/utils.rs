@@ -18,7 +18,9 @@ use openssl::x509::{X509NameBuilder, X509};
 pub async fn get_config() -> Result<Config> {
     let mut config_file = PathBuf::from(env::current_dir().unwrap());
     config_file.push("config.toml");
-    let toml_str = fs::read_to_string(config_file).await?;
+    let toml_str = fs::read_to_string(config_file)
+        .await
+        .expect("Missing 'config.toml' file!");
     let map: Config = toml::from_str(&toml_str)?;
     debug!("{:#?}", map);
     Ok(map)
@@ -45,8 +47,8 @@ pub async fn generate_certificate(pubkey: PathBuf, privkey: PathBuf, ip: &str) -
     let key_pair = PKey::from_rsa(rsa)?;
 
     let mut x509_name = X509NameBuilder::new()?;
-    x509_name.append_entry_by_text("C", "US")?;
-    x509_name.append_entry_by_text("ST", "TX")?;
+    x509_name.append_entry_by_text("C", "DE")?;
+    x509_name.append_entry_by_text("ST", "B")?;
     x509_name.append_entry_by_text("O", "homebot")?;
     x509_name.append_entry_by_text("CN", ip)?;
     let x509_name = x509_name.build();

@@ -2,6 +2,7 @@ use anyhow::Result;
 use std::error::Error;
 use std::path::PathBuf;
 use std::sync::Arc;
+use telegram_bot::llm::OpenAiModel;
 use telegram_bot::openmeteo::OpenMeteo;
 use telegram_bot::server::BotServer;
 use telegram_bot::telegrambot::{Bot, TelegramBot};
@@ -11,26 +12,27 @@ use tokio::sync::Notify;
 use tokio::time::Duration;
 use tracing::{debug, error, info};
 
-type MyBot = TelegramBot<OpenMeteo>;
-const IP_CHECK_TIME: Duration = Duration::from_secs(10);
+type MyBot = TelegramBot<OpenMeteo, OpenAiModel>;
+const IP_CHECK_TIME: Duration = Duration::from_secs(60);
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn Error>> {
+    // Configure tracing
+    tracing_subscriber::fmt()
+        .with_env_filter(tracing_subscriber::EnvFilter::from_default_env())
+        .init();
+
     let conf = utils::get_config().await?;
     let bot = Arc::new(MyBot::new(
         OpenMeteo::new(None, "Lehnitz".to_string()),
         conf.clone().bot,
+        OpenAiModel::new(),
     ));
 
     let bot_clone = bot.clone();
     let conf_clone = conf.clone();
     let config_changed = Arc::new(Notify::new());
     let config_changed_clone = config_changed.clone();
-
-    // Configure tracing
-    tracing_subscriber::fmt()
-        .with_env_filter(tracing_subscriber::EnvFilter::from_default_env())
-        .init();
 
     tokio::spawn(async move {
         loop {

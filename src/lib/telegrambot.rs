@@ -1,4 +1,7 @@
 use std::path::PathBuf;
+use std::sync::atomic::{AtomicBool, Ordering};
+
+use crate::llm::Agent;
 
 use super::types::{Affirmation, BotConfig, Message, Response, WeatherProvider, Webhook};
 use super::utils::get_ip;
@@ -17,19 +20,36 @@ pub trait Bot: Send + Sync + 'static {
     async fn is_webhook_configured(&self, ip: &str) -> Result<bool>;
     fn get_webhook_ips(&self) -> Result<Vec<&'static str>>;
 }
-#[derive(Clone)]
-pub struct TelegramBot<T: WeatherProvider> {
+// #[derive(Clone)]
+pub struct TelegramBot<T: WeatherProvider, L: Agent> {
     client: reqwest::Client,
     weather: T,
     config: BotConfig,
+    llm_agent: Option<L>,
+    chat_mode: AtomicBool,
 }
 
-impl<T: WeatherProvider> TelegramBot<T> {
-    pub fn new(weather: T, config: BotConfig) -> Self {
+impl<T: WeatherProvider, L: Agent> TelegramBot<T, L> {
+    pub fn new(weather: T, config: BotConfig, agent: L) -> Self {
+        // check if the OPENAI_API_KEY variable exists
+        let llm_agent = if let Ok(token) = std::env::var("OPENAI_API_KEY") {
+            if !token.is_empty() {
+                debug!("OPENAI_API_KEY found!");
+                Some(agent)
+            } else {
+                None
+            }
+        } else {
+            debug!("OPENAI_API_KEY not found in env variables!");
+            None
+        };
+
         TelegramBot {
             client: reqwest::Client::new(),
             config: config,
             weather: weather,
+            llm_agent: llm_agent,
+            chat_mode: AtomicBool::new(false),
         }
     }
 
@@ -96,12 +116,25 @@ impl<T: WeatherProvider> TelegramBot<T> {
 }
 
 #[async_trait]
-impl<T: WeatherProvider + 'static> Bot for TelegramBot<T> {
+impl<T: WeatherProvider + 'static, L: Agent + 'static> Bot for TelegramBot<T, L> {
     async fn handle_message(&self, msg: Message) -> Result<()> {
         let answer: String;
         let id = msg.chat.id;
-        let mut command = msg.text.split_whitespace();
-        answer = match command.next() {
+
+        let command;
+        let argument;
+
+        // if we are in chat mode, interpret the message as llm ask request
+        if self.chat_mode.load(Ordering::Relaxed) && !msg.text.starts_with("/endchat") {
+            command = Some("/ask");
+            argument = msg.text;
+        } else {
+            let mut message = msg.text.split_whitespace();
+            command = message.next();
+            argument = message.collect::<Vec<&str>>().join(" ");
+        }
+        debug!("Cmd: {:?}, Arg: {:?}", command, argument);
+        answer = match command {
             Some("/ip") => {
                 if let Ok(ip) = get_ip().await {
                     ip
@@ -111,8 +144,8 @@ impl<T: WeatherProvider + 'static> Bot for TelegramBot<T> {
             }
             Some("/temp") => {
                 let mut city = self.weather.get_favourite_city();
-                if let Some(arg) = command.next() {
-                    city = arg.to_string();
+                if !argument.is_empty() {
+                    city = argument;
                 }
                 if let Some(temp) = self.weather.get_temperature(city).await {
                     temp.to_string()
@@ -122,6 +155,27 @@ impl<T: WeatherProvider + 'static> Bot for TelegramBot<T> {
             }
             Some("/dice") => rand::thread_rng().gen_range(1..=6).to_string(),
             Some("/affirm") => self.get_affirmation().await?,
+            Some("/ask") => {
+                if let Some(ref agent) = self.llm_agent {
+                    if !argument.is_empty() {
+                        agent.request(&argument).await.unwrap()
+                    } else {
+                        "You need to ask something".into()
+                    }
+                } else {
+                    "Agent not configured!".into()
+                }
+            }
+            Some("/chat") => {
+                debug!("Entering llm chat mode");
+                self.chat_mode.store(true, Ordering::Relaxed);
+                "Let's talk!".into()
+            }
+            Some("/endchat") => {
+                debug!("Exiting llm chat mode");
+                self.chat_mode.store(false, Ordering::Relaxed);
+                "See ya!".into()
+            }
             Some("hello") => "hello back :)".into(),
             _ => "did not understand!".into(),
         };

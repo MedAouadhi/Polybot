@@ -27,6 +27,8 @@ tracing-actix-web = "0.7.6"
 actix-server = "2.2.0"
 socket2 = "0.5.3"
 futures = "0.3.28"
+llm-chain = "0.12.3"
+llm-chain-openai = "0.12.3"
 
 [[bin]]
 name = "homebot"

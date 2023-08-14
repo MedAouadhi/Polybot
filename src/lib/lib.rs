@@ -4,3 +4,4 @@ pub mod telegrambot;
 mod types;
 pub mod utils;
 pub use types::{BotConfig, Config, ServerConfig};
+pub mod llm;
