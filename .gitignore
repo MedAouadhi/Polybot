@@ -1,5 +1,4 @@
 /target
 config.toml
-YOURPRIVATE.key
-YOURPUBLIC.pem
-*.notif
+*.key
+*.pem

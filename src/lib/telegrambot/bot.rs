@@ -5,18 +5,17 @@ use std::sync::Arc;
 
 use crate::llm::Agent;
 
-use super::types::{Affirmation, BotConfig, Message, Response, WeatherProvider, Webhook};
-use super::utils::get_ip;
+use crate::telegrambot::bot_commands::commands::BotCommand;
+use crate::telegrambot::types::{Message, Response, Webhook};
+use crate::types::{Affirmation, BotConfig, WeatherProvider};
 use anyhow::{bail, Context, Result};
 use async_trait::async_trait;
 use chrono::{DateTime, Utc};
-use rand::Rng;
 use reqwest::multipart::Part;
 use reqwest::{header::CONTENT_TYPE, multipart};
 use serde_json::json;
 use tokio::fs;
 use tokio::sync::Mutex;
-use tokio::time::Duration;
 use tracing::debug;
 
 #[async_trait]
@@ -25,6 +24,7 @@ pub trait Bot: Send + Sync + 'static {
     async fn is_webhook_configured(&self, ip: &str) -> Result<bool>;
     fn get_webhook_ips(&self) -> Result<Vec<&'static str>>;
 }
+
 pub struct TelegramBot<T: WeatherProvider, L: Agent> {
     client: reqwest::Client,
     weather: T,
@@ -150,7 +150,6 @@ impl<T: WeatherProvider, L: Agent> TelegramBot<T, L> {
 #[async_trait]
 impl<T: WeatherProvider + 'static, L: Agent + 'static> Bot for TelegramBot<T, L> {
     async fn handle_message(&self, msg: Message) -> Result<()> {
-        let answer: String;
         let id = msg.chat.id;
 
         let command;
@@ -182,51 +181,52 @@ impl<T: WeatherProvider + 'static, L: Agent + 'static> Bot for TelegramBot<T, L>
             argument = message.collect::<Vec<&str>>().join(" ");
         }
         debug!("Cmd: {:?}, Arg: {:?}", command, argument);
-        answer = match command {
-            Some("/ip") => {
-                if let Ok(ip) = get_ip().await {
-                    ip
-                } else {
-                    "Problem getting the ip, try again".into()
-                }
-            }
-            Some("/temp") => {
-                let mut city = self.weather.get_favourite_city();
-                if !argument.is_empty() {
-                    city = argument;
-                }
-                if let Some(temp) = self.weather.get_temperature(city).await {
-                    temp.to_string()
-                } else {
-                    "Error getting the temp".into()
-                }
-            }
-            Some("/dice") => rand::thread_rng().gen_range(1..=6).to_string(),
-            Some("/affirm") => self.get_affirmation().await?,
-            Some("/ask") => {
-                if let Some(ref agent) = self.llm_agent {
-                    if !argument.is_empty() {
-                        agent.request(&argument).await.unwrap()
-                    } else {
-                        "You need to ask something".into()
-                    }
-                } else {
-                    "Agent not configured!".into()
-                }
-            }
-            Some("/chat") => {
-                debug!("Entering llm chat mode");
-                user.set_chat_mode(true);
-                "Let's talk!".into()
-            }
-            Some("/endchat") => {
-                debug!("Exiting llm chat mode");
-                user.set_chat_mode(false);
-                "See ya!".into()
-            }
-            Some("hello") => "hello back :)".into(),
-            _ => "did not understand!".into(),
+        let answer = if let Some(bot_command) = BotCommand::<Self>::parse(command.unwrap()) {
+            bot_command.handler(&self, &argument).await
+        } else {
+            "Did not understand!".into()
         };
+
+        // let answer = handler.await;
+        // answer = match command {
+        //     Some("/temp") => {
+        //         let mut city = self.weather.get_favourite_city();
+        //         if !argument.is_empty() {
+        //             city = argument;
+        //         }
+        //         if let Some(temp) = self.weather.get_temperature(city).await {
+        //             temp.to_string()
+        //         } else {
+        //             "Error getting the temp".into()
+        //         }
+        //     }
+        //     Some("/dice") => rand::thread_rng().gen_range(1..=6).to_string(),
+        //     Some("/affirm") => self.get_affirmation().await?,
+        //     Some("/ask") => {
+        //         if let Some(ref agent) = self.llm_agent {
+        //             if !argument.is_empty() {
+        //                 // TODO: Remove the unwrap
+        //                 agent.request(&argument).await.unwrap()
+        //             } else {
+        //                 "You need to ask something".into()
+        //             }
+        //         } else {
+        //             "Agent not configured!".into()
+        //         }
+        //     }
+        //     Some("/chat") => {
+        //         debug!("Entering llm chat mode");
+        //         user.set_chat_mode(true);
+        //         "Let's talk!".into()
+        //     }
+        //     Some("/endchat") => {
+        //         debug!("Exiting llm chat mode");
+        //         user.set_chat_mode(false);
+        //         "See ya!".into()
+        //     }
+        //     Some("hello") => "hello back :)".into(),
+        //     _ => "did not understand!".into(),
+        // };
         self.reply(id, &answer).await?;
         Ok(())
     }

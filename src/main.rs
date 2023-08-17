@@ -5,7 +5,7 @@ use std::sync::Arc;
 use telegram_bot::llm::OpenAiModel;
 use telegram_bot::openmeteo::OpenMeteo;
 use telegram_bot::server::BotServer;
-use telegram_bot::telegrambot::{Bot, TelegramBot};
+use telegram_bot::telegrambot::bot::{Bot, TelegramBot};
 use telegram_bot::utils;
 use tokio::select;
 use tokio::sync::Notify;

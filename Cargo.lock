@@ -431,6 +431,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "bot_commands_macro"
+version = "0.1.0"
+dependencies = [
+ "proc-macro2",
+ "quote",
+ "syn 1.0.109",
+]
+
+[[package]]
 name = "brotli"
 version = "3.3.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1051,6 +1060,7 @@ dependencies = [
  "actix-web",
  "anyhow",
  "async-trait",
+ "bot_commands_macro",
  "chrono",
  "futures",
  "llm-chain",
@@ -1760,9 +1770,9 @@ dependencies = [
 
 [[package]]
 name = "quote"
-version = "1.0.32"
+version = "1.0.33"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "50f3b39ccfb720540debaa0164757101c08ecb8d326b15358ce76a62c7e85965"
+checksum = "5267fca4496028628a95160fc423a33e8b2e6af8a5302579e322e4b520293cae"
 dependencies = [
  "proc-macro2",
 ]

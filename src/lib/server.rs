@@ -1,7 +1,7 @@
 use crate::ServerConfig;
 
-use super::telegrambot::Bot;
-use super::types::Update;
+use crate::telegrambot::bot::Bot;
+use crate::telegrambot::types::Update;
 use actix_ip_filter::IPFilter;
 use actix_server::{Server, ServerHandle};
 use actix_web::{post, web, App, HttpResponse, HttpServer, Responder};
