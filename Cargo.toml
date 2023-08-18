@@ -39,3 +39,8 @@ path = "src/main.rs"
 [lib]
 name = "telegram_bot"
 path = "src/lib/lib.rs"
+
+[dev-dependencies]
+actix-rt = "2.8.0"
+httpmock = "0.6.8"
+tempfile = "3.7.1"

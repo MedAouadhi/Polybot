@@ -14,10 +14,6 @@ use enum_dispatch::enum_dispatch;
 use serde::Deserialize;
 use tokio::sync::Mutex;
 
-#[derive(Deserialize)]
-pub struct Affirmation {
-    pub affirmation: String,
-}
 #[derive(Deserialize, Debug, Clone)]
 pub struct Config {
     pub bot: BotConfig,

@@ -107,3 +107,79 @@ pub async fn get_affirmation() -> Result<String> {
     let text: Affirmation = serde_json::from_str(&resp).unwrap();
     Ok(text.affirmation)
 }
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use httpmock::MockServer;
+    use tempfile::tempdir;
+
+    #[tokio::test]
+    async fn test_get_config() {
+        // This test assumes that a valid 'config.toml' file is present in the current directory.
+        // Create a dummy 'config.toml' file in a temp directory
+        let dir = tempdir().unwrap();
+        let config_path = dir.path().join("config.toml");
+        let data = toml::toml! {
+            [bot]
+            name = "dummy"
+            token = "dummytoken"
+
+            [server]
+            ip = "0.0.0.0"
+            port = 4443
+            privkeyfile = "YOURPRIVATE.key"
+            pubkeyfile = "YOURPUBLIC.pem"
+        };
+
+        fs::write(&config_path, data.to_string()).await.unwrap();
+        let current_dir = std::env::current_dir().unwrap();
+        std::env::set_current_dir(dir.path()).unwrap();
+
+        let result = get_config().await;
+        println!("{:#?}", result.as_ref().unwrap());
+        // Reset the current directory back to what it was
+        std::env::set_current_dir(current_dir).unwrap();
+
+        assert!(result.is_ok());
+    }
+
+    #[tokio::test]
+    async fn test_generate_certificate() {
+        let dir = tempdir().unwrap();
+        let pubkey_path = dir.path().join("public.pem");
+        let privkey_path = dir.path().join("private.pem");
+
+        let result =
+            generate_certificate(pubkey_path.clone(), privkey_path.clone(), "127.0.0.1").await;
+
+        assert!(result.is_ok());
+        assert!(pubkey_path.exists());
+        assert!(privkey_path.exists());
+    }
+
+    #[tokio::test]
+    async fn test_get_affirmation() {
+        // Mock the affirmations API
+        let server = MockServer::start();
+        let mock = server.mock(|when, then| {
+            when.method(httpmock::Method::GET);
+            then.status(200)
+                .body(r#"{ "affirmation": "You are awesome!" }"#);
+        });
+
+        let resp = reqwest::Client::new()
+            .get(&server.url("/"))
+            .header(CONTENT_TYPE, "application/json")
+            .send()
+            .await
+            .unwrap()
+            .text()
+            .await
+            .unwrap();
+
+        let text: Affirmation = serde_json::from_str(&resp).unwrap();
+
+        mock.assert();
+        assert_eq!(text.affirmation, "You are awesome!");
+    }
+}
