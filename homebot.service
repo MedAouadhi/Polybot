@@ -6,9 +6,9 @@ StartLimitIntervalSec=0
 Type=simple
 Restart=always
 RestartSec=1
-User=mohamed
-ExecStart= RUST_LOG=debug /home/mohamed/.cargo/bin/cargo run --release /home/mohamed/personal/homebot/Cargo.toml
-WorkingDirectory=/home/mohamed/personal/homebot
+User=${USER}
+ExecStart= RUST_LOG=debug /home/${USER}//.cargo/bin/cargo run --release /home/${USER}/personal/homebot/Cargo.toml
+WorkingDirectory=/home/${USER}/personal/homebot
 
 [Install]
 WantedBy=multi-user.target
