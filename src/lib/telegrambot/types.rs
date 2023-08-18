@@ -3,6 +3,8 @@ use serde::{Deserialize, Serialize};
 use serde_with::TimestampSeconds;
 use tracing::debug;
 
+use crate::types::BotMessage;
+
 #[derive(Deserialize, Clone, Debug)]
 #[allow(dead_code)]
 pub struct Chat {
@@ -30,6 +32,20 @@ pub struct Message {
     #[serde(skip)]
     #[serde(alias = "entities")]
     _entities: String,
+}
+
+impl BotMessage for Message {
+    fn get_message(&self) -> String {
+        self.text.clone()
+    }
+
+    fn get_user(&self) -> (u64, String) {
+        (self.from.id, self.from.first_name.clone())
+    }
+
+    fn get_chat_id(&self) -> u64 {
+        self.chat.id
+    }
 }
 
 #[derive(Deserialize, Clone, Debug)]

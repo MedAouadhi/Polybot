@@ -54,7 +54,7 @@ pub fn bot_commands(_args: TokenStream, input: TokenStream) -> TokenStream {
         quote! {
             #command_name => Some(Self::#enum_variant_name(Command {
                 description: stringify!(#func_name).to_string(),
-                handler: std::sync::Arc::new(|bot, args| Box::pin(#func_name(bot, args))),
+                handler: ::std::sync::Arc::new(|bot, args| Box::pin(#func_name(bot, args))),
             }))
         }
     });
@@ -67,13 +67,13 @@ pub fn bot_commands(_args: TokenStream, input: TokenStream) -> TokenStream {
     });
 
     let bot_command_enum: proc_macro2::TokenStream = quote! {
-        pub enum BotCommand<'a, T: crate::telegrambot::bot::Bot + 'a> {
+        pub enum BotCommand<'a, T: crate::types::Bot + 'a> {
             #(#variants,)*
         }
     };
 
     let bot_command_impl: proc_macro2::TokenStream = quote! {
-        impl<'a, T: crate::telegrambot::bot::Bot + Send> BotCommand<'a, T> {
+        impl<'a, T: crate::types::Bot + Send> BotCommand<'a, T> {
             pub fn parse(command: &str) -> Option<Self> {
                 match command {
                     #(#parse_arms,)*
@@ -81,7 +81,7 @@ pub fn bot_commands(_args: TokenStream, input: TokenStream) -> TokenStream {
                 }
             }
 
-            pub fn handler(&self, bot: &'a T, args: &'a str) -> futures::future::BoxFuture<String> {
+            pub fn handler(&self, bot: &'a T, args: &'a str) -> ::futures::future::BoxFuture<String> {
                 match self {
                     #(#handler_arms,)*
                 }
@@ -110,14 +110,13 @@ pub fn bot_commands(_args: TokenStream, input: TokenStream) -> TokenStream {
     };
 
     let expanded = quote! {
-        pub struct Command<'a, T: crate::telegrambot::bot::Bot + 'a> {
+        pub struct Command<'a, T: crate::types::Bot + 'a> {
             pub description: String,
-            pub handler: std::sync::Arc<dyn Fn(&'a T, &'a str) -> futures::future::BoxFuture<'a, String> + Send + Sync>,
+            pub handler: ::std::sync::Arc<dyn Fn(&'a T, &'a str) -> ::futures::future::BoxFuture<'a, String> + Send + Sync>,
         }
         #new_module
     };
 
-    println!("{}", expanded.to_string());
     TokenStream::from(expanded)
 }
 

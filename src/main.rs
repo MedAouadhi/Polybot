@@ -5,13 +5,13 @@ use std::sync::Arc;
 use telegram_bot::llm::OpenAiModel;
 use telegram_bot::openmeteo::OpenMeteo;
 use telegram_bot::server::BotServer;
-use telegram_bot::telegrambot::bot::{Bot, TelegramBot};
+use telegram_bot::telegrambot::bot::TelegramBot;
 use telegram_bot::utils;
+use telegram_bot::Bot;
 use tokio::select;
 use tokio::sync::Notify;
 use tokio::time::Duration;
 use tracing::{debug, error, info};
-
 type MyBot = TelegramBot<OpenMeteo, OpenAiModel>;
 const IP_CHECK_TIME: Duration = Duration::from_secs(60);
 

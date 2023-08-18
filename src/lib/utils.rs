@@ -88,3 +88,22 @@ pub async fn generate_certificate(pubkey: PathBuf, privkey: PathBuf, ip: &str) -
     info!("Generated the keys !");
     Ok(())
 }
+
+#[derive(Deserialize)]
+pub struct Affirmation {
+    pub affirmation: String,
+}
+pub async fn get_affirmation() -> Result<String> {
+    let url = format!("https://affirmations.dev");
+    let resp = reqwest::Client::new()
+        .get(url)
+        .header(CONTENT_TYPE, "application/json")
+        .send()
+        .await
+        .unwrap()
+        .text()
+        .await
+        .unwrap();
+    let text: Affirmation = serde_json::from_str(&resp).unwrap();
+    Ok(text.affirmation)
+}

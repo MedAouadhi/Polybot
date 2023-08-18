@@ -30,6 +30,7 @@ futures = "0.3.28"
 llm-chain = "0.12.3"
 llm-chain-openai = "0.12.3"
 bot_commands_macro = { path = "./bot_commands_macro" }
+enum_dispatch = "0.3.12"
 
 [[bin]]
 name = "homebot"

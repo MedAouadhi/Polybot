@@ -1,16 +1,16 @@
 use std::collections::HashMap;
 use std::path::PathBuf;
-use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Arc;
 
 use crate::llm::Agent;
 
-use crate::telegrambot::bot_commands::commands::BotCommand;
-use crate::telegrambot::types::{Message, Response, Webhook};
-use crate::types::{Affirmation, BotConfig, WeatherProvider};
+use crate::bot_commands::commands::BotCommand;
+use crate::telegrambot::types::{Response, Update, Webhook};
+use crate::types::{
+    Bot, BotConfig, BotMessage, BotMessages, BotUser, SharedUsers, WeatherProvider,
+};
 use anyhow::{bail, Context, Result};
 use async_trait::async_trait;
-use chrono::{DateTime, Utc};
 use reqwest::multipart::Part;
 use reqwest::{header::CONTENT_TYPE, multipart};
 use serde_json::json;
@@ -18,47 +18,12 @@ use tokio::fs;
 use tokio::sync::Mutex;
 use tracing::debug;
 
-#[async_trait]
-pub trait Bot: Send + Sync + 'static {
-    async fn handle_message(&self, msg: Message) -> Result<()>;
-    async fn is_webhook_configured(&self, ip: &str) -> Result<bool>;
-    fn get_webhook_ips(&self) -> Result<Vec<&'static str>>;
-}
-
 pub struct TelegramBot<T: WeatherProvider, L: Agent> {
     client: reqwest::Client,
     weather: T,
     config: BotConfig,
     llm_agent: Option<L>,
     users: Arc<Mutex<HashMap<u64, BotUser>>>,
-}
-
-#[derive(Default)]
-pub struct BotUser {
-    chat_mode: AtomicBool,
-    last_activity: DateTime<Utc>,
-}
-
-impl BotUser {
-    fn new() -> Self {
-        Self::default()
-    }
-
-    fn set_last_activity(&mut self, date: DateTime<Utc>) {
-        self.last_activity = date;
-    }
-
-    fn get_last_activity(&self) -> DateTime<Utc> {
-        self.last_activity
-    }
-
-    fn set_chat_mode(&self, state: bool) {
-        self.chat_mode.store(state, Ordering::Relaxed);
-    }
-
-    fn is_in_chat_mode(&self) -> bool {
-        self.chat_mode.load(Ordering::Relaxed)
-    }
 }
 
 impl<T: WeatherProvider, L: Agent> TelegramBot<T, L> {
@@ -131,62 +96,57 @@ impl<T: WeatherProvider, L: Agent> TelegramBot<T, L> {
         debug!("[webhook set]{:#?}", resp.text().await);
         Ok(())
     }
-
-    async fn get_affirmation(&self) -> Result<String> {
-        let url = format!("https://affirmations.dev");
-        let resp = self
-            .client
-            .get(url)
-            .header(CONTENT_TYPE, "application/json")
-            .send()
-            .await?
-            .text()
-            .await?;
-        let text: Affirmation = serde_json::from_str(&resp)?;
-        Ok(text.affirmation)
-    }
 }
 
 #[async_trait]
 impl<T: WeatherProvider + 'static, L: Agent + 'static> Bot for TelegramBot<T, L> {
-    async fn handle_message(&self, msg: Message) -> Result<()> {
-        let id = msg.chat.id;
+    async fn handle_message(&self, msg: String) -> Result<()> {
+        let answer: String;
+        let id: u64;
+        let update: Update = msg.into();
+        debug!("Received {:#?}", update);
+        if let Some(message) = update.message {
+            let msg = BotMessages::from(message);
+            id = msg.get_chat_id();
+            let (user_id, user_name) = msg.get_user();
+            let command;
+            let argument;
 
-        let command;
-        let argument;
+            let mut users = self.users.lock().await;
 
-        let mut users = self.users.lock().await;
+            if users.get(&user_id).is_none() {
+                // add the user in the hashmap
+                debug!(
+                    "Adding the user (id = {}), (name = {}).",
+                    user_id, user_name
+                );
+                users.insert(user_id, BotUser::new());
+            };
 
-        if users.get(&msg.from.id).is_none() {
-            // add the user in the hashmap
-            debug!(
-                "Adding the user (id = {}), (name = {}).",
-                msg.from.id, msg.from.first_name
-            );
-            users.insert(msg.from.id, BotUser::new());
-        };
+            let user = users.get_mut(&user_id).unwrap();
 
-        let user = users.get_mut(&msg.from.id).unwrap();
+            // update the user activity
+            user.set_last_activity(chrono::Utc::now());
 
-        // update the user activity
-        user.set_last_activity(chrono::Utc::now());
-
-        // if we are in chat mode, interpret the message as llm ask request
-        if user.is_in_chat_mode() && !msg.text.starts_with("/endchat") {
-            command = Some("/ask");
-            argument = msg.text;
+            let text = msg.get_message();
+            // if we are in chat mode, interpret the message as llm ask request
+            if user.is_in_chat_mode() && !text.starts_with("/endchat") {
+                command = Some("/ask");
+                argument = text;
+            } else {
+                let mut message = text.split_whitespace();
+                command = message.next();
+                argument = message.collect::<Vec<&str>>().join(" ");
+            }
+            debug!("Cmd: {:?}, Arg: {:?}", command, argument);
+            answer = if let Some(bot_command) = BotCommand::<Self>::parse(command.unwrap()) {
+                bot_command.handler(&self, &argument).await
+            } else {
+                "Did not understand!".into()
+            };
         } else {
-            let mut message = msg.text.split_whitespace();
-            command = message.next();
-            argument = message.collect::<Vec<&str>>().join(" ");
+            bail!("Unsupported message format!");
         }
-        debug!("Cmd: {:?}, Arg: {:?}", command, argument);
-        let answer = if let Some(bot_command) = BotCommand::<Self>::parse(command.unwrap()) {
-            bot_command.handler(&self, &argument).await
-        } else {
-            "Did not understand!".into()
-        };
-
         // let answer = handler.await;
         // answer = match command {
         //     Some("/temp") => {
@@ -260,5 +220,9 @@ impl<T: WeatherProvider + 'static, L: Agent + 'static> Bot for TelegramBot<T, L>
             "149.154.16?.*",
             "149.154.17?.*",
         ])
+    }
+
+    async fn get_users(&self) -> SharedUsers {
+        self.users.clone()
     }
 }

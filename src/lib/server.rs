@@ -1,7 +1,6 @@
 use crate::ServerConfig;
 
-use crate::telegrambot::bot::Bot;
-use crate::telegrambot::types::Update;
+use crate::types::Bot;
 use actix_ip_filter::IPFilter;
 use actix_server::{Server, ServerHandle};
 use actix_web::{post, web, App, HttpResponse, HttpServer, Responder};
@@ -12,8 +11,9 @@ use std::env;
 use std::net::{SocketAddr, TcpListener};
 use std::path::PathBuf;
 use std::sync::Arc;
-use tracing::{debug, info};
+use tracing::info;
 use tracing_actix_web::TracingLogger;
+
 pub struct BotServer<B: Bot + Send + Sync> {
     worker: Option<Server>,
     handle: ServerHandle,
@@ -22,12 +22,8 @@ pub struct BotServer<B: Bot + Send + Sync> {
 
 #[post("/")]
 async fn handler(body: web::Bytes, bot: web::Data<Arc<dyn Bot>>) -> impl Responder {
-    let update: Update = String::from_utf8(body.to_vec()).unwrap().into();
-    if let Some(msg) = update.message {
-        bot.into_inner().handle_message(msg).await.unwrap();
-    } else {
-        debug!("Unsupported message format {:#?}", update);
-    }
+    let update = String::from_utf8(body.to_vec()).unwrap();
+    bot.into_inner().handle_message(update).await.unwrap();
     HttpResponse::Ok()
 }
 
