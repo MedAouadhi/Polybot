@@ -1,18 +1,18 @@
+mod bot_commands;
+mod utils;
 use anyhow::Result;
+use bot_commands::commands::BotCommand;
 use std::error::Error;
 use std::path::PathBuf;
 use std::sync::Arc;
-use telegram_bot::llm::OpenAiModel;
-use telegram_bot::openmeteo::OpenMeteo;
 use telegram_bot::server::BotServer;
 use telegram_bot::telegrambot::bot::TelegramBot;
-use telegram_bot::utils;
 use telegram_bot::Bot;
 use tokio::select;
 use tokio::sync::Notify;
 use tokio::time::Duration;
 use tracing::{debug, error, info};
-type MyBot = TelegramBot<OpenMeteo, OpenAiModel>;
+type MyBot = TelegramBot<BotCommand>;
 const IP_CHECK_TIME: Duration = Duration::from_secs(60);
 
 #[tokio::main]
@@ -23,11 +23,7 @@ async fn main() -> Result<(), Box<dyn Error>> {
         .init();
 
     let conf = utils::get_config().await?;
-    let bot = Arc::new(MyBot::new(
-        OpenMeteo::new(None, "Lehnitz".to_string()),
-        conf.clone().bot,
-        OpenAiModel::new(),
-    ));
+    let bot = Arc::new(MyBot::new(conf.clone().bot));
 
     let bot_clone = bot.clone();
     let conf_clone = conf.clone();

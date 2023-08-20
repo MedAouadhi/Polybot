@@ -6,7 +6,7 @@ use std::{
     },
 };
 
-use super::telegrambot::types::Message;
+use crate::telegrambot::types::Message;
 use anyhow::Result;
 use async_trait::async_trait;
 use chrono::{DateTime, Utc};
@@ -57,6 +57,15 @@ pub trait Bot: Send + Sync + 'static {
     fn get_webhook_ips(&self) -> Result<Vec<&'static str>>;
     async fn get_users(&self) -> SharedUsers;
 }
+
+pub trait CommandParser: Send + Sync {
+    fn parse(&self, command: &str) -> Option<Self>
+    where
+        Self: std::marker::Sized;
+
+    fn handler(&self, args: String) -> ::futures::future::BoxFuture<String>;
+}
+
 #[derive(Default)]
 pub struct BotUser {
     chat_mode: AtomicBool,

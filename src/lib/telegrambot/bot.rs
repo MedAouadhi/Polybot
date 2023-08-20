@@ -2,13 +2,8 @@ use std::collections::HashMap;
 use std::path::PathBuf;
 use std::sync::Arc;
 
-use crate::llm::Agent;
-
-use crate::bot_commands::commands::BotCommand;
 use crate::telegrambot::types::{Response, Update, Webhook};
-use crate::types::{
-    Bot, BotConfig, BotMessage, BotMessages, BotUser, SharedUsers, WeatherProvider,
-};
+use crate::types::{Bot, BotConfig, BotMessage, BotMessages, BotUser, CommandParser, SharedUsers};
 use anyhow::{bail, Context, Result};
 use async_trait::async_trait;
 use reqwest::multipart::Part;
@@ -18,35 +13,33 @@ use tokio::fs;
 use tokio::sync::Mutex;
 use tracing::debug;
 
-pub struct TelegramBot<T: WeatherProvider, L: Agent> {
+pub struct TelegramBot<P: CommandParser> {
     client: reqwest::Client,
-    weather: T,
     config: BotConfig,
-    llm_agent: Option<L>,
     users: Arc<Mutex<HashMap<u64, BotUser>>>,
+    cmd_parser: P,
 }
 
-impl<T: WeatherProvider, L: Agent> TelegramBot<T, L> {
-    pub fn new(weather: T, config: BotConfig, agent: L) -> Self {
+impl<P: CommandParser + Default> TelegramBot<P> {
+    pub fn new(config: BotConfig) -> Self {
         // check if the OPENAI_API_KEY variable exists
-        let llm_agent = if let Ok(token) = std::env::var("OPENAI_API_KEY") {
-            if !token.is_empty() {
-                debug!("OPENAI_API_KEY found!");
-                Some(agent)
-            } else {
-                None
-            }
-        } else {
-            debug!("OPENAI_API_KEY not found in env variables!");
-            None
-        };
+        // let llm_agent = if let Ok(token) = std::env::var("OPENAI_API_KEY") {
+        //     if !token.is_empty() {
+        //         debug!("OPENAI_API_KEY found!");
+        //         Some(agent)
+        //     } else {
+        //         None
+        //     }
+        // } else {
+        //     debug!("OPENAI_API_KEY not found in env variables!");
+        //     None
+        // };
 
         TelegramBot {
             client: reqwest::Client::new(),
-            config: config,
-            weather: weather,
-            llm_agent: llm_agent,
+            config,
             users: Arc::new(Mutex::new(HashMap::new())),
+            cmd_parser: P::default(),
         }
     }
 
@@ -99,7 +92,7 @@ impl<T: WeatherProvider, L: Agent> TelegramBot<T, L> {
 }
 
 #[async_trait]
-impl<T: WeatherProvider + 'static, L: Agent + 'static> Bot for TelegramBot<T, L> {
+impl<P: CommandParser + Default + 'static> Bot for TelegramBot<P> {
     async fn handle_message(&self, msg: String) -> Result<()> {
         let answer: String;
         let id: u64;
@@ -139,8 +132,8 @@ impl<T: WeatherProvider + 'static, L: Agent + 'static> Bot for TelegramBot<T, L>
                 argument = message.collect::<Vec<&str>>().join(" ");
             }
             debug!("Cmd: {:?}, Arg: {:?}", command, argument);
-            answer = if let Some(bot_command) = BotCommand::<Self>::parse(command.unwrap()) {
-                bot_command.handler(&self, &argument).await
+            answer = if let Some(bot_command) = self.cmd_parser.parse(command.unwrap()) {
+                bot_command.handler(argument).await
             } else {
                 "Did not understand!".into()
             };

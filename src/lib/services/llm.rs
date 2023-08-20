@@ -1,7 +1,8 @@
-use anyhow::Result;
+use anyhow::{bail, Result};
 use async_trait::async_trait;
 use llm_chain::{executor, parameters, prompt};
 use llm_chain_openai::chatgpt::Executor;
+use tracing::debug;
 
 #[async_trait]
 pub trait Agent: Send + Sync {
@@ -16,10 +17,20 @@ pub struct OpenAiModel {
 }
 
 impl OpenAiModel {
-    pub fn new() -> Self {
-        Self {
-            _api_token: None,
-            executor: executor!().unwrap(),
+    pub fn try_new() -> Result<Self> {
+        // check if the OPENAI_API_KEY variable exists
+        if let Ok(token) = std::env::var("OPENAI_API_KEY") {
+            if !token.is_empty() {
+                debug!("OPENAI_API_KEY found!");
+                Ok(Self {
+                    _api_token: None,
+                    executor: executor!().unwrap(),
+                })
+            } else {
+                bail!("OPENAI_API_KEY variable is empty");
+            }
+        } else {
+            bail!("OPENAI_API_KEY not found in env variables!");
         }
     }
 }

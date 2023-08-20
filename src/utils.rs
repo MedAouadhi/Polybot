@@ -1,5 +1,5 @@
-use super::Config;
 use anyhow::{Context, Result};
+use telegram_bot::Config;
 
 use reqwest::header::CONTENT_TYPE;
 use serde::Deserialize;
@@ -16,7 +16,7 @@ use openssl::rsa::Rsa;
 use openssl::x509::{X509NameBuilder, X509};
 
 pub async fn get_config() -> Result<Config> {
-    let mut config_file = PathBuf::from(env::current_dir().unwrap());
+    let mut config_file = env::current_dir().unwrap();
     config_file.push("config.toml");
     let toml_str = fs::read_to_string(config_file)
         .await
@@ -94,7 +94,7 @@ pub struct Affirmation {
     pub affirmation: String,
 }
 pub async fn get_affirmation() -> Result<String> {
-    let url = format!("https://affirmations.dev");
+    let url = "https://affirmations.dev".to_string();
     let resp = reqwest::Client::new()
         .get(url)
         .header(CONTENT_TYPE, "application/json")

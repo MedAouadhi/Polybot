@@ -130,7 +130,7 @@ impl From<String> for Update {
     fn from(value: String) -> Self {
         let update_str = serde_json::from_str(&value).unwrap();
         debug!("{:#?}", update_str);
-        return update_str;
+        update_str
     }
 }
 

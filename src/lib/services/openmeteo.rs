@@ -124,14 +124,14 @@ impl OpenMeteo {
 
     #[inline]
     fn get_forecast_url(lat: f32, long: f32, days: u32) -> String {
-        format!("https://api.open-meteo.com/v1/forecast?latitude={}&longitude={}&hourly=temperature_2m&forecast_days={}", lat.to_string(), long.to_string(), days.to_string())
+        format!("https://api.open-meteo.com/v1/forecast?latitude={}&longitude={}&hourly=temperature_2m&forecast_days={}", lat, long, days)
     }
 }
 
 #[async_trait]
 impl WeatherProvider for OpenMeteo {
     async fn get_temperature(&self, city: String) -> Option<f32> {
-        if let Some(Some((lat, long))) = self.get_geolocation(city).await.ok() {
+        if let Ok(Some((lat, long))) = self.get_geolocation(city).await {
             let resp = if let Ok(req) = self
                 .client
                 .get(OpenMeteo::get_forecast_url(lat, long, 1))
@@ -164,7 +164,7 @@ impl WeatherProvider for OpenMeteo {
 
 #[cfg(test)]
 mod test {
-    use crate::{openmeteo::OpenMeteo, types::WeatherProvider};
+    use crate::{services::openmeteo::OpenMeteo, types::WeatherProvider};
 
     #[tokio::test]
     async fn test_get_geolocation() {

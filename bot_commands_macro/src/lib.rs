@@ -24,20 +24,8 @@ pub fn bot_commands(_args: TokenStream, input: TokenStream) -> TokenStream {
                     let func_name = &func.sig.ident;
                     let command_name = command;
                     commands.push((command_name, func_name.clone()));
-
-                    // Create a new function item with only non-command attributes
-                    let new_attrs = func
-                        .attrs
-                        .iter()
-                        .filter(|attr| !attr.path.is_ident(CMD_ATTR))
-                        .cloned()
-                        .collect();
-                    let mut new_func = func.clone();
-                    new_func.attrs = new_attrs;
-                    new_items.push(syn::Item::Fn(new_func));
-                } else {
-                    new_items.push(syn::Item::Fn(func.clone()));
                 }
+                new_items.push(syn::Item::Fn(func.clone()));
             }
             // Other items are pushed unchanged
             _ => new_items.push(item.clone()),
@@ -46,15 +34,19 @@ pub fn bot_commands(_args: TokenStream, input: TokenStream) -> TokenStream {
 
     let variants = commands.iter().map(|(command_name, _func_name)| {
         let enum_variant_name = get_cmd_enum_variant(&command_name);
-        quote! { #enum_variant_name(Command<'a, T>) }
+        quote! { #enum_variant_name(Command) }
     });
+
+    let default_variant = quote! {
+        DefaultCmd,
+    };
 
     let parse_arms = commands.iter().map(|(command_name, func_name)| {
         let enum_variant_name = get_cmd_enum_variant(&command_name);
         quote! {
             #command_name => Some(Self::#enum_variant_name(Command {
                 description: stringify!(#func_name).to_string(),
-                handler: ::std::sync::Arc::new(|bot, args| Box::pin(#func_name(bot, args))),
+                handler: ::std::sync::Arc::new(|args| Box::pin(#func_name(args))),
             }))
         }
     });
@@ -62,18 +54,21 @@ pub fn bot_commands(_args: TokenStream, input: TokenStream) -> TokenStream {
     let handler_arms = commands.iter().map(|(command_name, _func_name)| {
         let enum_variant_name = get_cmd_enum_variant(&command_name);
         quote! {
-            Self::#enum_variant_name(cmd) => (cmd.handler)(bot, args)
+            Self::#enum_variant_name(cmd) => (cmd.handler)(args)
         }
     });
 
     let bot_command_enum: proc_macro2::TokenStream = quote! {
-        pub enum BotCommand<'a, T: crate::types::Bot + 'a> {
+        #[derive(Default)]
+        pub enum BotCommand {
+            #[default]
+            #default_variant
             #(#variants,)*
         }
     };
 
     let bot_command_impl: proc_macro2::TokenStream = quote! {
-        impl<'a, T: crate::types::Bot + Send> BotCommand<'a, T> {
+        impl BotCommand {
             pub fn parse(command: &str) -> Option<Self> {
                 match command {
                     #(#parse_arms,)*
@@ -81,22 +76,39 @@ pub fn bot_commands(_args: TokenStream, input: TokenStream) -> TokenStream {
                 }
             }
 
-            pub fn handler(&self, bot: &'a T, args: &'a str) -> ::futures::future::BoxFuture<String> {
+            pub fn handler(&self, args: String) -> ::futures::future::BoxFuture<String> {
                 match self {
+                    Self::DefaultCmd => unimplemented!(),
                     #(#handler_arms,)*
                 }
             }
         }
     };
 
+    let command_parser_impl: proc_macro2::TokenStream = quote! {
+        impl ::telegram_bot::types::CommandParser for BotCommand {
+            fn parse(&self, command: &str) -> Option<Self>
+            where
+                Self: std::marker::Sized {
+                    BotCommand::parse(command)
+                }
+
+            fn handler(&self, args: String) -> ::futures::future::BoxFuture<String> {
+                self.handler(args)
+            }
+        }
+    };
     let parsed_enum: ItemEnum =
         syn::parse2(bot_command_enum).expect("Failed to parse the generated BotCommand enum");
     let parsed_impl: ItemImpl =
         syn::parse2(bot_command_impl).expect("Failed to parse the generated impl for BotCommand");
+    let parsed_cmd_parser_impl: ItemImpl = syn::parse2(command_parser_impl)
+        .expect("Failed to parse the generated CommandParser impl for BotCommand");
 
     // 3. Add the Parsed Items to `new_items`
     new_items.push(Item::Enum(parsed_enum));
     new_items.push(Item::Impl(parsed_impl));
+    new_items.push(Item::Impl(parsed_cmd_parser_impl));
 
     // Create new content with the original brace token and the new items
     let new_content = Some((brace.clone(), new_items));
@@ -110,9 +122,9 @@ pub fn bot_commands(_args: TokenStream, input: TokenStream) -> TokenStream {
     };
 
     let expanded = quote! {
-        pub struct Command<'a, T: crate::types::Bot + 'a> {
+        pub struct Command {
             pub description: String,
-            pub handler: ::std::sync::Arc<dyn Fn(&'a T, &'a str) -> ::futures::future::BoxFuture<'a, String> + Send + Sync>,
+            pub handler: ::std::sync::Arc<dyn Fn(String) -> ::futures::future::BoxFuture<'static, String> + Send + Sync>,
         }
         #new_module
     };
@@ -140,7 +152,20 @@ fn get_command_attribute(attrs: &[Attribute]) -> Option<String> {
 }
 
 #[proc_macro_attribute]
-pub fn handler(_args: TokenStream, input: TokenStream) -> TokenStream {
+pub fn handler(args: TokenStream, input: TokenStream) -> TokenStream {
+    println!("### the args are: {:#?}", args);
+    //validate the attribute,
+    // for now, only check that cmd is present.
+    let is_cmd_in_args = args.into_iter().any(|e| {
+        if let proc_macro::TokenTree::Ident(x) = e {
+            x.to_string() == "cmd".to_string()
+        } else {
+            false
+        }
+    });
+    if !is_cmd_in_args {
+        panic!("Handler macro used without 'cmd'!");
+    }
     input
 }
 

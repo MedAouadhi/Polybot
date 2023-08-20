@@ -4,14 +4,13 @@ use crate::types::Bot;
 use actix_ip_filter::IPFilter;
 use actix_server::{Server, ServerHandle};
 use actix_web::{post, web, App, HttpResponse, HttpServer, Responder};
-use anyhow::{Ok, Result};
+use anyhow::Result;
 use openssl::ssl::{SslAcceptor, SslFiletype, SslMethod};
 use socket2::{Domain, Protocol, Socket, Type};
 use std::env;
 use std::net::{SocketAddr, TcpListener};
-use std::path::PathBuf;
 use std::sync::Arc;
-use tracing::info;
+use tracing::{error, info};
 use tracing_actix_web::TracingLogger;
 
 pub struct BotServer<B: Bot + Send + Sync> {
@@ -22,22 +21,30 @@ pub struct BotServer<B: Bot + Send + Sync> {
 
 #[post("/")]
 async fn handler(body: web::Bytes, bot: web::Data<Arc<dyn Bot>>) -> impl Responder {
-    let update = String::from_utf8(body.to_vec()).unwrap();
-    bot.into_inner().handle_message(update).await.unwrap();
+    let update = if let Ok(msg) = String::from_utf8(body.to_vec()) {
+        msg
+    } else {
+        error!("Wrong message format received! {:#?}", body.to_vec());
+        return HttpResponse::BadRequest();
+    };
+    if bot.into_inner().handle_message(update).await.is_err() {
+        error!("Failed to handle the message!");
+        return HttpResponse::InternalServerError();
+    }
     HttpResponse::Ok()
 }
 
 impl<B: Bot> BotServer<B> {
     const TIME_WAIT: u64 = 3;
     pub fn new(config: ServerConfig, bot: Arc<B>) -> Self {
-        let mut priv_key = PathBuf::from(env::current_dir().unwrap());
+        let mut priv_key = env::current_dir().unwrap();
         priv_key.push(config.clone().privkey_path);
         let mut builder = SslAcceptor::mozilla_intermediate(SslMethod::tls()).unwrap();
         builder
             .set_private_key_file(priv_key, SslFiletype::PEM)
             .unwrap();
 
-        let mut pub_key = PathBuf::from(env::current_dir().unwrap());
+        let mut pub_key = env::current_dir().unwrap();
         pub_key.push(config.clone().pubkey_path);
         builder.set_certificate_chain_file(pub_key).unwrap();
         builder
@@ -73,7 +80,7 @@ impl<B: Bot> BotServer<B> {
         .run();
 
         BotServer {
-            bot: bot,
+            bot,
             handle: server.handle(),
             worker: Some(server),
         }
@@ -92,7 +99,7 @@ impl<B: Bot> BotServer<B> {
         Ok(())
     }
 
-    pub async fn stop(&self) -> () {
+    pub async fn stop(&self) {
         info!("Stopping the server ..");
         self.handle.stop(false).await;
     }
