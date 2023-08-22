@@ -14,8 +14,8 @@ Come social media (just telegram for now) bots! What is a better interface than 
 I chose Rust as I am already on its learning journey, and I decided this is the perfect didactic exercise.
 I initially started this as a Telegram bot server, but then to further push my trait system understanding, I decided to abstract it more, to support (in theory) multiple bots.
 
-## Telegram Bot
-[TelegramBot](https://github.com/MedAouadhi/Polybot/blob/master/demo.gif)
+### Telegram bot example
+![TelegramBot](https://github.com/MedAouadhi/Polybot/blob/master/demo.gif)
 ## The Interface
 Adding a command is as easy as annotating the handler function with the `handler(cmd = "/my_command")` attribute.
 The commands need also be under a module annoted with `#[bot_commands]`.
