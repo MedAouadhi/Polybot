@@ -3,7 +3,7 @@ use std::marker::PhantomData;
 use std::path::PathBuf;
 use std::sync::Arc;
 
-use crate::telegrambot::types::{Response, Update, Webhook};
+use crate::telegram::types::{Response, Update, Webhook};
 use crate::types::{
     Bot, BotCommands, BotConfig, BotMessage, BotMessages, BotUser, BotUserActions, BotUserCommand,
     CommandHashMap, SharedUsers,
@@ -17,22 +17,22 @@ use tokio::fs;
 use tokio::sync::Mutex;
 use tracing::debug;
 
-pub struct TelegramBot<P: BotCommands> {
+pub struct TelegramBot<B: BotCommands> {
     client: reqwest::Client,
     config: BotConfig,
     users: SharedUsers,
     command_list: CommandHashMap,
-    _commands: PhantomData<P>,
+    _commands: PhantomData<B>,
 }
 
-impl<P: BotCommands> TelegramBot<P> {
+impl<B: BotCommands> TelegramBot<B> {
     pub fn new(config: BotConfig) -> Self {
         TelegramBot {
             client: reqwest::Client::new(),
             config,
             users: Arc::new(Mutex::new(HashMap::new())),
-            command_list: P::command_list(),
-            _commands: PhantomData::default(),
+            command_list: B::command_list(),
+            _commands: PhantomData,
         }
     }
 
@@ -90,7 +90,7 @@ impl<P: BotCommands> TelegramBot<P> {
 }
 
 #[async_trait]
-impl<P: BotCommands + Default + 'static> Bot for TelegramBot<P> {
+impl<B: BotCommands + 'static> Bot for TelegramBot<B> {
     async fn handle_message(&self, msg: String) -> Result<()> {
         let answer: String;
         let id: u64;
@@ -120,8 +120,8 @@ impl<P: BotCommands + Default + 'static> Bot for TelegramBot<P> {
             user.set_last_activity(chrono::Utc::now()).await;
 
             // if we are in chat mode, interpret the message as llm ask request
-            if user.is_in_chat_mode().await && !text.starts_with(&P::chat_exit_command().unwrap()) {
-                command = P::llm_request_command();
+            if user.is_in_chat_mode().await && !text.starts_with(B::chat_exit_command().unwrap()) {
+                command = B::llm_request_command();
                 argument = text;
             } else {
                 let mut message = text.split_whitespace();
@@ -180,9 +180,5 @@ impl<P: BotCommands + Default + 'static> Bot for TelegramBot<P> {
             "149.154.16?.*",
             "149.154.17?.*",
         ])
-    }
-
-    async fn get_users(&self) -> SharedUsers {
-        self.users.clone()
     }
 }

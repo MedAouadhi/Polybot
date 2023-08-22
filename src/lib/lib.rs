@@ -1,5 +1,5 @@
 pub mod server;
-pub mod telegrambot;
+pub mod telegram;
 pub mod types;
 pub use types::{Bot, BotConfig, Config, ServerConfig};
 pub mod services;

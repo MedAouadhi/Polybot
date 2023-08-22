@@ -6,7 +6,7 @@ use std::{
     },
 };
 
-use crate::telegrambot::types::Message;
+use crate::telegram::types::Message;
 use anyhow::Result;
 use async_trait::async_trait;
 use chrono::{DateTime, Utc};
@@ -51,7 +51,6 @@ pub enum BotMessages {
 }
 
 pub type SharedUsers = Arc<Mutex<HashMap<u64, Mutex<BotUser>>>>;
-pub type UserData = Arc<Mutex<BotUser>>;
 pub type CommandHashMap = HashMap<String, Box<dyn BotCommandHandler + Send + Sync>>;
 
 #[async_trait]
@@ -59,7 +58,6 @@ pub trait Bot: Send + Sync + 'static {
     async fn handle_message(&self, msg: String) -> Result<()>;
     async fn is_webhook_configured(&self, ip: &str) -> Result<bool>;
     fn get_webhook_ips(&self) -> Result<Vec<&'static str>>;
-    async fn get_users(&self) -> SharedUsers;
 }
 
 pub trait BotCommands: Default + Send + Sync {

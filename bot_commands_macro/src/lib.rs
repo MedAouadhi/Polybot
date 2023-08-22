@@ -1,5 +1,7 @@
 extern crate proc_macro;
 
+use core::panic;
+
 use proc_macro::TokenStream;
 use proc_macro2::{Ident, Span};
 use quote::quote;
@@ -40,7 +42,13 @@ pub fn bot_commands(_args: TokenStream, input: TokenStream) -> TokenStream {
                     let func_name = &func.sig.ident;
                     let command_name = command;
                     let func_body = &func.block;
-                    commands.push((command_name.clone(), func_name.clone(), func_body.clone()));
+                    commands.push((
+                        command_name.clone(),
+                        func_name.clone(),
+                        func_body.clone(),
+                        chat_start,
+                        chat_exit,
+                    ));
 
                     if chat_start == Some(true) {
                         chat_start_cmd = Some(command_name.clone());
@@ -59,7 +67,16 @@ pub fn bot_commands(_args: TokenStream, input: TokenStream) -> TokenStream {
         }
     }
 
-    let handler_structs = commands.iter().map(|(command_name, _, _)| {
+    let attrs_count = vec![&chat_start_cmd, &chat_exit_cmd, &llm_request_cmd]
+        .iter()
+        .filter(|&x| x.is_some())
+        .count();
+
+    if !(attrs_count == 0 || attrs_count == 3) {
+        panic!("chat_start, chat_exit and llm_request need to be either all or none defined");
+    }
+
+    let handler_structs = commands.iter().map(|(command_name, _, _, _, _)| {
         let struct_name = get_cmd_struct_name(&command_name);
         quote! {
 
@@ -71,20 +88,32 @@ pub fn bot_commands(_args: TokenStream, input: TokenStream) -> TokenStream {
 
     let handler_impls = commands
         .iter()
-        .map(|(command_name, func_name, _func_body)| {
+        .map(|(command_name, func_name, _, chat_start, chat_exit)| {
             let struct_name = get_cmd_struct_name(&command_name);
+            let state = if chat_start == &Some(true) {
+                quote! {
+                    user_tx.set_chat_mode(true).await;
+                }
+            } else if chat_exit == &Some(true) {
+                quote! {
+                    user_tx.set_chat_mode(false).await;
+                }
+            } else {
+                quote!()
+            }; 
             quote! {
 
                 #[::async_trait::async_trait]
-                impl ::telegram_bot::types::BotCommandHandler for #struct_name {
-                    async fn handle(&self, user_tx: ::tokio::sync::mpsc::Sender<::telegram_bot::types::BotUserCommand>, args: String) -> String {
+                impl ::polybot::types::BotCommandHandler for #struct_name {
+                    async fn handle(&self, user_tx: ::tokio::sync::mpsc::Sender<::polybot::types::BotUserCommand>, args: String) -> String {
+                        #state
                         #func_name(user_tx, args).await
                     }
                 }
             }
         });
 
-    let command_insert = commands.iter().map(|(command_name, _, _)| {
+    let command_insert = commands.iter().map(|(command_name, _, _, _, _)| {
         let struct_name = get_cmd_struct_name(&command_name);
         quote! { handlers.insert(#command_name.to_string(), Box::new(#struct_name))}
     });
@@ -132,9 +161,9 @@ pub fn bot_commands(_args: TokenStream, input: TokenStream) -> TokenStream {
         pub struct MyCommands;
     );
     let bot_commands_impl = quote! {
-        impl ::telegram_bot::types::BotCommands for MyCommands {
-            fn command_list() -> ::telegram_bot::types::CommandHashMap {
-                let mut handlers: ::telegram_bot::types::CommandHashMap = ::std::collections::HashMap::new();
+        impl ::polybot::types::BotCommands for MyCommands {
+            fn command_list() -> ::polybot::types::CommandHashMap {
+                let mut handlers: ::polybot::types::CommandHashMap = ::std::collections::HashMap::new();
                 #(#command_insert;)*
 
                 handlers

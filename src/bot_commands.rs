@@ -4,10 +4,10 @@ use bot_commands_macro::{bot_commands, handler};
 pub mod commands {
 
     use super::*;
+    use polybot::services::llm::{Agent, OpenAiModel};
+    use polybot::services::openmeteo::OpenMeteo;
+    use polybot::types::{BotUserActions, WeatherProvider};
     use rand::Rng;
-    use telegram_bot::services::llm::{Agent, OpenAiModel};
-    use telegram_bot::services::openmeteo::OpenMeteo;
-    use telegram_bot::types::{BotUserActions, WeatherProvider};
 
     use crate::utils::{get_affirmation, get_ip};
 
@@ -59,14 +59,12 @@ pub mod commands {
     }
 
     #[handler(cmd = "/chat", chat_start = true)]
-    async fn chat(user_tx: impl BotUserActions, _: String) -> String {
-        user_tx.set_chat_mode(true).await;
+    async fn chat(_user_tx: impl BotUserActions, _: String) -> String {
         "Let's chat!".to_string()
     }
 
     #[handler(cmd = "/endchat", chat_exit = true)]
-    async fn endchat(user_tx: impl BotUserActions, _request: String) -> String {
-        user_tx.set_chat_mode(false).await;
+    async fn endchat(_user_tx: impl BotUserActions, _request: String) -> String {
         "See ya!".to_string()
     }
 

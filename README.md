@@ -1,14 +1,50 @@
-# Homebot
+# PolyBot
 
 [![Rust](https://github.com/MedAouadhi/homebot/actions/workflows/rust.yml/badge.svg?branch=master)](https://github.com/MedAouadhi/homebot/actions/workflows/rust.yml)
 
-A bot server using telegram bot api mostly using asynchronous IO, useful to respond to custom commands. To be used for home automation or anything in your mind.
+An async bot server with straightforward commands definition, with intelligent chat mode using LLMs (currently OpenAI, Llama2 in mind).
 
-The main idea for this project, is that I wanted to ssh to my workstation (installed in my home) from anywhere, **without paying for a static ip or a domain, and without using any 3rd party software**, I simply need the public ip address of my home network. Well the problem is that the ip address can change at any time, so I needed a software that is running locally to the network, which publishes the ip address whenever I ask it.
+## Background
+The main driver for this project, was the simple idea, that I wanted to ssh to my workstation (installed in my home) from anywhere, **without paying for a static ip or a domain, and without using any 3rd party software**, I simply need the public ip address of my home network.
 
-Come telegram bots! What is a better interface than a chat conversation in an app that I already use in my day to day life. With the bonus of adding
-more functionnality to the bot whenever I feel so.
+Well the problem is that the ip address can change at any time, so I needed a software that is running locally to the network, which publishes the ip address whenever I ask it.
 
+Come social media (just telegram for now) bots! What is a better interface than a chat conversation in an app that I already use in my day to day life. With the bonus of adding more functionnality to the bot whenever suitable. 
+
+I chose Rust as I am already on its learning journey, and I decided this is the perfect didactic exercise.
+I initially started this as a Telegram bot server, but then to further push my trait system understanding, I decided to abstract it more, to support (in theory) multiple bots.
+
+## The Interface
+Adding a command is as easy as annotating the handler function with the `handler(cmd = "/my_command")` attribute.
+The commands need also be under a module annoted with `#[bot_commands]`.
+
+```rust
+use bot_commands_macro::{bot_commands, handler};
+
+#[bot_commands]
+pub mod commands {
+
+    use super::*;
+    use polybot::types::BotUserActions;
+    use rand::Rng;
+
+    use crate::utils::get_ip;
+
+    #[handler(cmd = "/ip")]
+    async fn ip(_user_tx: impl BotUserActions, _: String) -> String {
+        if let Ok(ip) = get_ip().await {
+            return ip;
+        }
+        "Error getting the Ip address".to_string()
+    }
+
+    #[handler(cmd = "/dice")]
+    async fn dice(_: impl BotUserActions, _: String) -> String {
+        rand::thread_rng().gen_range(1..=6).to_string()
+    }
+}
+
+```
 ## Current supported commands
 - `/ip` : Gives back the current public ipv4 of the bot's network.
 - `/affirm` Sends back motivational quotes.
@@ -17,11 +53,7 @@ more functionnality to the bot whenever I feel so.
 - `/ask [prompt]` Prompts the LLM agent for any single shot request.
 - `/chat` Starts **chat mode** which will interpret any following messages as prompts.
 - `/endchat` Exits the chat mode.
-## To come
-- clever assistant with long term memory (using llama-2) using [llm-chain](https://github.com/sobelio/llm-chain).
-    - [x] Answers any question
-    - [ ] Can read my documents and be queried about them.
-- [ ] Add more tests, everywhere.
+
 
 ## Description
 There are mainly two ways to receive messages from Telegram servers, either by polling (shitty idea) using `getUpdates` API,

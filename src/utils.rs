@@ -1,5 +1,5 @@
 use anyhow::{Context, Result};
-use telegram_bot::Config;
+use polybot::Config;
 
 use reqwest::header::CONTENT_TYPE;
 use serde::Deserialize;
@@ -87,20 +87,6 @@ mod tests {
 
         assert!(result.is_ok());
     }
-
-    // #[tokio::test]
-    // async fn test_generate_certificate() {
-    //     let dir = tempdir().unwrap();
-    //     let pubkey_path = dir.path().join("public.pem");
-    //     let privkey_path = dir.path().join("private.pem");
-
-    //     let result =
-    //         generate_certificate(pubkey_path.clone(), privkey_path.clone(), "127.0.0.1").await;
-
-    //     assert!(result.is_ok());
-    //     assert!(pubkey_path.exists());
-    //     assert!(privkey_path.exists());
-    // }
 
     #[tokio::test]
     async fn test_get_affirmation() {

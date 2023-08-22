@@ -37,7 +37,7 @@ name = "homebot"
 path = "src/main.rs"
 
 [lib]
-name = "telegram_bot"
+name = "polybot"
 path = "src/lib/lib.rs"
 
 [dev-dependencies]
