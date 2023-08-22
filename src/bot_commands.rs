@@ -7,12 +7,12 @@ pub mod commands {
     use rand::Rng;
     use telegram_bot::services::llm::{Agent, OpenAiModel};
     use telegram_bot::services::openmeteo::OpenMeteo;
-    use telegram_bot::types::{UserData, WeatherProvider};
+    use telegram_bot::types::{BotUserActions, WeatherProvider};
 
     use crate::utils::{get_affirmation, get_ip};
 
     #[handler(cmd = "/ip")]
-    async fn ip(_user: UserData, _: String) -> String {
+    async fn ip(_user_tx: impl BotUserActions, _: String) -> String {
         if let Ok(ip) = get_ip().await {
             return ip;
         }
@@ -20,7 +20,7 @@ pub mod commands {
     }
 
     #[handler(cmd = "/temp")]
-    async fn temp(_user: UserData, args: String) -> String {
+    async fn temp(_user_tx: impl BotUserActions, args: String) -> String {
         let weather = OpenMeteo::new(None, "Lehnitz".to_string());
         let mut city = weather.get_favourite_city();
         if !args.is_empty() {
@@ -34,7 +34,7 @@ pub mod commands {
     }
 
     #[handler(cmd = "/affirm")]
-    async fn affirm(_user: UserData, _args: String) -> String {
+    async fn affirm(_user_tx: impl BotUserActions, _args: String) -> String {
         if let Ok(msg) = get_affirmation().await {
             msg
         } else {
@@ -43,7 +43,7 @@ pub mod commands {
     }
 
     #[handler(cmd = "/ask", llm_request = true)]
-    async fn ask(_user: UserData, request: String) -> String {
+    async fn ask(_user_tx: impl BotUserActions, request: String) -> String {
         if request.is_empty() {
             return "Ask something!".to_string();
         }
@@ -59,19 +59,19 @@ pub mod commands {
     }
 
     #[handler(cmd = "/chat", chat_start = true)]
-    async fn chat(_user: UserData, _: String) -> String {
-        // let users = users_m.lock().await;
-
+    async fn chat(user_tx: impl BotUserActions, _: String) -> String {
+        user_tx.set_chat_mode(true).await;
         "Let's chat!".to_string()
     }
 
     #[handler(cmd = "/endchat", chat_exit = true)]
-    async fn endchat(_user: UserData, _request: String) -> String {
+    async fn endchat(user_tx: impl BotUserActions, _request: String) -> String {
+        user_tx.set_chat_mode(false).await;
         "See ya!".to_string()
     }
 
     #[handler(cmd = "/dice")]
-    async fn dice(_: UserData, _: String) -> String {
+    async fn dice(_: impl BotUserActions, _: String) -> String {
         rand::thread_rng().gen_range(1..=6).to_string()
     }
 }

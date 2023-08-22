@@ -12,6 +12,7 @@ use async_trait::async_trait;
 use chrono::{DateTime, Utc};
 use enum_dispatch::enum_dispatch;
 use serde::Deserialize;
+use tokio::sync::mpsc::Sender;
 use tokio::sync::Mutex;
 
 #[derive(Deserialize, Debug, Clone)]
@@ -70,7 +71,7 @@ pub trait BotCommands: Default + Send + Sync {
 
 #[async_trait]
 pub trait BotCommandHandler {
-    async fn handle(&self, user_data: UserData, args: String) -> String;
+    async fn handle(&self, user_tx: Sender<BotUserCommand>, args: String) -> String;
 }
 
 #[derive(Default)]
@@ -83,23 +84,59 @@ impl BotUser {
     pub fn new() -> Self {
         Self::default()
     }
+}
 
-    pub fn set_last_activity(&mut self, date: DateTime<Utc>) {
+#[async_trait]
+pub trait BotUserActions {
+    async fn set_last_activity(&mut self, date: DateTime<Utc>);
+    async fn get_last_activity(&self) -> DateTime<Utc>;
+    async fn set_chat_mode(&self, state: bool);
+    async fn is_in_chat_mode(&self) -> bool;
+}
+
+#[async_trait]
+impl BotUserActions for BotUser {
+    async fn set_last_activity(&mut self, date: DateTime<Utc>) {
         self.last_activity = date;
     }
 
-    pub fn get_last_activity(&self) -> DateTime<Utc> {
+    async fn get_last_activity(&self) -> DateTime<Utc> {
         self.last_activity
     }
 
-    pub fn set_chat_mode(&self, state: bool) {
+    async fn set_chat_mode(&self, state: bool) {
         self.chat_mode.store(state, Ordering::Relaxed);
     }
 
-    pub fn is_in_chat_mode(&self) -> bool {
+    async fn is_in_chat_mode(&self) -> bool {
         self.chat_mode.load(Ordering::Relaxed)
     }
 }
+
+#[async_trait]
+impl BotUserActions for Sender<BotUserCommand> {
+    async fn set_last_activity(&mut self, _date: DateTime<Utc>) {
+        unimplemented!()
+    }
+
+    async fn get_last_activity(&self) -> DateTime<Utc> {
+        unimplemented!()
+    }
+
+    async fn set_chat_mode(&self, state: bool) {
+        self.send(BotUserCommand::UpdateChatMode { chat_mode: state })
+            .await
+            .unwrap();
+    }
+
+    async fn is_in_chat_mode(&self) -> bool {
+        unimplemented!()
+    }
+}
+pub enum BotUserCommand {
+    UpdateChatMode { chat_mode: bool },
+}
+
 pub enum ForecastTime {
     Later(u32),
     Tomorrow,

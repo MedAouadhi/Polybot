@@ -77,8 +77,8 @@ pub fn bot_commands(_args: TokenStream, input: TokenStream) -> TokenStream {
 
                 #[::async_trait::async_trait]
                 impl ::telegram_bot::types::BotCommandHandler for #struct_name {
-                    async fn handle(&self, user_data: ::telegram_bot::types::UserData, args: String) -> String {
-                        #func_name(user_data, args).await
+                    async fn handle(&self, user_tx: ::tokio::sync::mpsc::Sender<::telegram_bot::types::BotUserCommand>, args: String) -> String {
+                        #func_name(user_tx, args).await
                     }
                 }
             }

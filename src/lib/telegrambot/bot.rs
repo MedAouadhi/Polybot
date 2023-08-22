@@ -5,7 +5,8 @@ use std::sync::Arc;
 
 use crate::telegrambot::types::{Response, Update, Webhook};
 use crate::types::{
-    Bot, BotCommands, BotConfig, BotMessage, BotMessages, BotUser, CommandHashMap, SharedUsers,
+    Bot, BotCommands, BotConfig, BotMessage, BotMessages, BotUser, BotUserActions, BotUserCommand,
+    CommandHashMap, SharedUsers,
 };
 use anyhow::{bail, Context, Result};
 use async_trait::async_trait;
@@ -68,7 +69,12 @@ impl<P: BotCommands> TelegramBot<P> {
         let part = Part::bytes(certificate).file_name("cert.pem");
         let form = multipart::Form::new()
             .text("url", format!("https://{}", ip))
-            .part("certificate", part);
+            .part("certificate", part)
+            .text(
+                "allowed_updates",
+                serde_json::to_string(&vec!["message", "edited_message"])?,
+            )
+            .text("drop_pending_updates", serde_json::to_string(&true)?);
 
         let resp = self
             .client
@@ -108,74 +114,39 @@ impl<P: BotCommands + Default + 'static> Bot for TelegramBot<P> {
             };
 
             let text = msg.get_message();
-            // Create a context so that we unlock the user right before calling the handler
-            {
-                let mut user = users.get_mut(&user_id).unwrap().lock().await;
+            let mut user = users.get_mut(&user_id).unwrap().lock().await;
 
-                // update the user activity
-                user.set_last_activity(chrono::Utc::now());
+            // update the user activity
+            user.set_last_activity(chrono::Utc::now()).await;
 
-                // if we are in chat mode, interpret the message as llm ask request
-                if user.is_in_chat_mode() && !text.starts_with(&P::chat_exit_command().unwrap()) {
-                    command = P::llm_request_command();
-                    argument = text;
-                } else {
-                    let mut message = text.split_whitespace();
-                    command = message.next();
-                    argument = message.collect::<Vec<&str>>().join(" ");
-                }
-                debug!("Cmd: {:?}, Arg: {:?}", command, argument);
+            // if we are in chat mode, interpret the message as llm ask request
+            if user.is_in_chat_mode().await && !text.starts_with(&P::chat_exit_command().unwrap()) {
+                command = P::llm_request_command();
+                argument = text;
+            } else {
+                let mut message = text.split_whitespace();
+                command = message.next();
+                argument = message.collect::<Vec<&str>>().join(" ");
             }
+            debug!("Cmd: {:?}, Arg: {:?}", command, argument);
+            let (tx, mut rx) = tokio::sync::mpsc::channel::<BotUserCommand>(32);
+
             answer = if let Some(bot_command) = self.command_list.get(command.unwrap()) {
-                bot_command
-                    .handle(Arc::new(Mutex::new(BotUser::new())), argument)
-                    .await
+                let result = bot_command.handle(tx, argument).await;
+                if let Some(action) = rx.recv().await {
+                    match action {
+                        BotUserCommand::UpdateChatMode { chat_mode } => {
+                            user.set_chat_mode(chat_mode).await;
+                        }
+                    }
+                }
+                result
             } else {
                 "Did not understand!".into()
             };
         } else {
             bail!("Unsupported message format!");
         }
-        // let answer = handler.await;
-        // answer = match command {
-        //     Some("/temp") => {
-        //         let mut city = self.weather.get_favourite_city();
-        //         if !argument.is_empty() {
-        //             city = argument;
-        //         }
-        //         if let Some(temp) = self.weather.get_temperature(city).await {
-        //             temp.to_string()
-        //         } else {
-        //             "Error getting the temp".into()
-        //         }
-        //     }
-        //     Some("/dice") => rand::thread_rng().gen_range(1..=6).to_string(),
-        //     Some("/affirm") => self.get_affirmation().await?,
-        //     Some("/ask") => {
-        //         if let Some(ref agent) = self.llm_agent {
-        //             if !argument.is_empty() {
-        //                 // TODO: Remove the unwrap
-        //                 agent.request(&argument).await.unwrap()
-        //             } else {
-        //                 "You need to ask something".into()
-        //             }
-        //         } else {
-        //             "Agent not configured!".into()
-        //         }
-        //     }
-        //     Some("/chat") => {
-        //         debug!("Entering llm chat mode");
-        //         user.set_chat_mode(true);
-        //         "Let's talk!".into()
-        //     }
-        //     Some("/endchat") => {
-        //         debug!("Exiting llm chat mode");
-        //         user.set_chat_mode(false);
-        //         "See ya!".into()
-        //     }
-        //     Some("hello") => "hello back :)".into(),
-        //     _ => "did not understand!".into(),
-        // };
         self.reply(id, &answer).await?;
         Ok(())
     }
