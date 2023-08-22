@@ -7,9 +7,9 @@ An async bot server with straightforward commands definition, with intelligent c
 ## Background
 The main driver for this project, was the simple idea, that I wanted to ssh to my workstation (installed in my home) from anywhere, **without paying for a static ip or a domain, and without using any 3rd party software**, I simply need the public ip address of my home network.
 
-Well the problem is that the ip address can change at any time, so I needed a software that is running locally to the network, which publishes the ip address whenever I ask it.
+Well the problem is that the ip address can change at any time, so I needed a software that is running locally in the network, which publishes the ip address whenever I ask it.
 
-Come social media (just telegram for now) bots! What is a better interface than a chat conversation in an app that I already use in my day to day life. With the bonus of adding more functionnality to the bot whenever suitable. 
+Come social media bots! (just telegram for now). Because what is a better interface than a chat conversation in an app that I already use in my day to day life. With the bonus of adding more functionnality to the bot whenever suitable. 
 
 I chose Rust as I am already on its learning journey, and I decided this is the perfect didactic exercise.
 I initially started this as a Telegram bot server, but then to further push my trait system understanding, I decided to abstract it more, to support multiple bots (in theory).
@@ -18,7 +18,7 @@ I initially started this as a Telegram bot server, but then to further push my t
 - Async server with dynamic ip support, periodic monitoring and update of the self signed certificate of the server based on ip changes:
     - Keep all accesses local to your network, don't need a third party hosting/routing service.
     - Gives the ability to use async webhooks vs polling for the updates.
-- Intuitive and simple addition of commands, simply add new function that returns a string, that's literally it.
+- Intuitive and simple addition of commands, simply add a new function that returns a string, that's literally it.
 - **Command mode** to serve back the handlers you define.
 - **Chat Mode** ask your large language model, using: 
     - OpenAI models (through their API).
