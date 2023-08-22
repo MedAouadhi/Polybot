@@ -1,9 +1,12 @@
 use std::collections::HashMap;
+use std::marker::PhantomData;
 use std::path::PathBuf;
 use std::sync::Arc;
 
 use crate::telegrambot::types::{Response, Update, Webhook};
-use crate::types::{Bot, BotConfig, BotMessage, BotMessages, BotUser, CommandParser, SharedUsers};
+use crate::types::{
+    Bot, BotCommands, BotConfig, BotMessage, BotMessages, BotUser, CommandHashMap, SharedUsers,
+};
 use anyhow::{bail, Context, Result};
 use async_trait::async_trait;
 use reqwest::multipart::Part;
@@ -13,33 +16,22 @@ use tokio::fs;
 use tokio::sync::Mutex;
 use tracing::debug;
 
-pub struct TelegramBot<P: CommandParser> {
+pub struct TelegramBot<P: BotCommands> {
     client: reqwest::Client,
     config: BotConfig,
-    users: Arc<Mutex<HashMap<u64, BotUser>>>,
-    cmd_parser: P,
+    users: SharedUsers,
+    command_list: CommandHashMap,
+    _commands: PhantomData<P>,
 }
 
-impl<P: CommandParser + Default> TelegramBot<P> {
+impl<P: BotCommands> TelegramBot<P> {
     pub fn new(config: BotConfig) -> Self {
-        // check if the OPENAI_API_KEY variable exists
-        // let llm_agent = if let Ok(token) = std::env::var("OPENAI_API_KEY") {
-        //     if !token.is_empty() {
-        //         debug!("OPENAI_API_KEY found!");
-        //         Some(agent)
-        //     } else {
-        //         None
-        //     }
-        // } else {
-        //     debug!("OPENAI_API_KEY not found in env variables!");
-        //     None
-        // };
-
         TelegramBot {
             client: reqwest::Client::new(),
             config,
             users: Arc::new(Mutex::new(HashMap::new())),
-            cmd_parser: P::default(),
+            command_list: P::command_list(),
+            _commands: PhantomData::default(),
         }
     }
 
@@ -92,7 +84,7 @@ impl<P: CommandParser + Default> TelegramBot<P> {
 }
 
 #[async_trait]
-impl<P: CommandParser + Default + 'static> Bot for TelegramBot<P> {
+impl<P: BotCommands + Default + 'static> Bot for TelegramBot<P> {
     async fn handle_message(&self, msg: String) -> Result<()> {
         let answer: String;
         let id: u64;
@@ -106,34 +98,38 @@ impl<P: CommandParser + Default + 'static> Bot for TelegramBot<P> {
             let argument;
 
             let mut users = self.users.lock().await;
-
             if users.get(&user_id).is_none() {
                 // add the user in the hashmap
                 debug!(
                     "Adding the user (id = {}), (name = {}).",
                     user_id, user_name
                 );
-                users.insert(user_id, BotUser::new());
+                users.insert(user_id, Mutex::new(BotUser::new()));
             };
 
-            let user = users.get_mut(&user_id).unwrap();
-
-            // update the user activity
-            user.set_last_activity(chrono::Utc::now());
-
             let text = msg.get_message();
-            // if we are in chat mode, interpret the message as llm ask request
-            if user.is_in_chat_mode() && !text.starts_with("/endchat") {
-                command = Some("/ask");
-                argument = text;
-            } else {
-                let mut message = text.split_whitespace();
-                command = message.next();
-                argument = message.collect::<Vec<&str>>().join(" ");
+            // Create a context so that we unlock the user right before calling the handler
+            {
+                let mut user = users.get_mut(&user_id).unwrap().lock().await;
+
+                // update the user activity
+                user.set_last_activity(chrono::Utc::now());
+
+                // if we are in chat mode, interpret the message as llm ask request
+                if user.is_in_chat_mode() && !text.starts_with(&P::chat_exit_command().unwrap()) {
+                    command = P::llm_request_command();
+                    argument = text;
+                } else {
+                    let mut message = text.split_whitespace();
+                    command = message.next();
+                    argument = message.collect::<Vec<&str>>().join(" ");
+                }
+                debug!("Cmd: {:?}, Arg: {:?}", command, argument);
             }
-            debug!("Cmd: {:?}, Arg: {:?}", command, argument);
-            answer = if let Some(bot_command) = self.cmd_parser.parse(command.unwrap()) {
-                bot_command.handler(argument).await
+            answer = if let Some(bot_command) = self.command_list.get(command.unwrap()) {
+                bot_command
+                    .handle(Arc::new(Mutex::new(BotUser::new())), argument)
+                    .await
             } else {
                 "Did not understand!".into()
             };

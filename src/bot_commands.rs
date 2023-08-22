@@ -6,12 +6,12 @@ pub mod commands {
     use super::*;
     use telegram_bot::services::llm::{Agent, OpenAiModel};
     use telegram_bot::services::openmeteo::OpenMeteo;
-    use telegram_bot::types::WeatherProvider;
+    use telegram_bot::types::{UserData, WeatherProvider};
 
     use crate::utils::{get_affirmation, get_ip};
 
     #[handler(cmd = "/ip")]
-    async fn ip(_: String) -> String {
+    async fn ip(_user: UserData, _: String) -> String {
         if let Ok(ip) = get_ip().await {
             return ip;
         }
@@ -19,7 +19,7 @@ pub mod commands {
     }
 
     #[handler(cmd = "/temp")]
-    async fn temp(args: String) -> String {
+    async fn temp(_user: UserData, args: String) -> String {
         let weather = OpenMeteo::new(None, "Lehnitz".to_string());
         let mut city = weather.get_favourite_city();
         if !args.is_empty() {
@@ -33,7 +33,7 @@ pub mod commands {
     }
 
     #[handler(cmd = "/affirm")]
-    async fn affirm(_args: String) -> String {
+    async fn affirm(_user: UserData, _args: String) -> String {
         if let Ok(msg) = get_affirmation().await {
             msg
         } else {
@@ -41,8 +41,8 @@ pub mod commands {
         }
     }
 
-    #[handler(cmd = "/ask")]
-    async fn ask(request: String) -> String {
+    #[handler(cmd = "/ask", llm_request = true)]
+    async fn ask(_user: UserData, request: String) -> String {
         if request.is_empty() {
             return "Ask something!".to_string();
         }
@@ -55,5 +55,17 @@ pub mod commands {
         } else {
             "Could not create the llm agent, check the API key".to_string()
         }
+    }
+
+    #[handler(cmd = "/chat", chat_start = true)]
+    async fn chat(_user: UserData, _: String) -> String {
+        // let users = users_m.lock().await;
+
+        "Let's chat!".to_string()
+    }
+
+    #[handler(cmd = "/endchat", chat_exit = true)]
+    async fn endchat(_user: UserData, _request: String) -> String {
+        "See ya!".to_string()
     }
 }

@@ -49,7 +49,10 @@ pub enum BotMessages {
     Message, // Telegram messages
 }
 
-pub type SharedUsers = Arc<Mutex<HashMap<u64, BotUser>>>;
+pub type SharedUsers = Arc<Mutex<HashMap<u64, Mutex<BotUser>>>>;
+pub type UserData = Arc<Mutex<BotUser>>;
+pub type CommandHashMap = HashMap<String, Box<dyn BotCommandHandler + Send + Sync>>;
+
 #[async_trait]
 pub trait Bot: Send + Sync + 'static {
     async fn handle_message(&self, msg: String) -> Result<()>;
@@ -58,12 +61,16 @@ pub trait Bot: Send + Sync + 'static {
     async fn get_users(&self) -> SharedUsers;
 }
 
-pub trait CommandParser: Send + Sync {
-    fn parse(&self, command: &str) -> Option<Self>
-    where
-        Self: std::marker::Sized;
+pub trait BotCommands: Default + Send + Sync {
+    fn command_list() -> CommandHashMap;
+    fn chat_start_command() -> Option<&'static str>;
+    fn chat_exit_command() -> Option<&'static str>;
+    fn llm_request_command() -> Option<&'static str>;
+}
 
-    fn handler(&self, args: String) -> ::futures::future::BoxFuture<String>;
+#[async_trait]
+pub trait BotCommandHandler {
+    async fn handle(&self, user_data: UserData, args: String) -> String;
 }
 
 #[derive(Default)]

@@ -4,26 +4,53 @@ use proc_macro::TokenStream;
 use proc_macro2::{Ident, Span};
 use quote::quote;
 use syn::{
-    parse_macro_input, Attribute, Item, ItemEnum, ItemImpl, ItemMod, Lit, Meta, MetaNameValue,
+    parse_macro_input, Attribute, Item, ItemImpl, ItemMod, ItemStruct, Lit, Meta, MetaNameValue,
     NestedMeta,
 };
 
 const CMD_ATTR: &str = "handler";
+
+struct CommandAttribute {
+    command: Option<String>,
+    chat_mode_start: Option<bool>,
+    chat_mode_exit: Option<bool>,
+    llm_request: Option<bool>,
+}
 
 #[proc_macro_attribute]
 pub fn bot_commands(_args: TokenStream, input: TokenStream) -> TokenStream {
     let module = parse_macro_input!(input as ItemMod);
     let mut commands = Vec::new();
     let mut new_items = Vec::new();
+    let mut chat_start_cmd: Option<String> = None;
+    let mut chat_exit_cmd: Option<String> = None;
+    let mut llm_request_cmd: Option<String> = None;
 
     let (brace, items) = &module.content.as_ref().unwrap();
     for item in items {
         match item {
             syn::Item::Fn(func) => {
-                if let Some(command) = get_command_attribute(&func.attrs) {
+                let CommandAttribute {
+                    command: cmd,
+                    chat_mode_start: chat_start,
+                    chat_mode_exit: chat_exit,
+                    llm_request: llm_req,
+                } = get_command_attribute(&func.attrs);
+                if let Some(command) = cmd {
                     let func_name = &func.sig.ident;
                     let command_name = command;
-                    commands.push((command_name, func_name.clone()));
+                    let func_body = &func.block;
+                    commands.push((command_name.clone(), func_name.clone(), func_body.clone()));
+
+                    if chat_start == Some(true) {
+                        chat_start_cmd = Some(command_name.clone());
+                    }
+                    if chat_exit == Some(true) {
+                        chat_exit_cmd = Some(command_name.clone());
+                    }
+                    if llm_req == Some(true) {
+                        llm_request_cmd = Some(command_name);
+                    }
                 }
                 new_items.push(syn::Item::Fn(func.clone()));
             }
@@ -32,83 +59,125 @@ pub fn bot_commands(_args: TokenStream, input: TokenStream) -> TokenStream {
         }
     }
 
-    let variants = commands.iter().map(|(command_name, _func_name)| {
-        let enum_variant_name = get_cmd_enum_variant(&command_name);
-        quote! { #enum_variant_name(Command) }
+    let handler_structs = commands.iter().map(|(command_name, _, _)| {
+        let struct_name = get_cmd_struct_name(&command_name);
+        quote! {
+
+            #[derive(Default)]
+            struct #struct_name;
+
+        }
     });
 
-    let default_variant = quote! {
-        DefaultCmd,
+    let handler_impls = commands
+        .iter()
+        .map(|(command_name, func_name, _func_body)| {
+            let struct_name = get_cmd_struct_name(&command_name);
+            quote! {
+
+                #[::async_trait::async_trait]
+                impl ::telegram_bot::types::BotCommandHandler for #struct_name {
+                    async fn handle(&self, user_data: ::telegram_bot::types::UserData, args: String) -> String {
+                        #func_name(user_data, args).await
+                    }
+                }
+            }
+        });
+
+    let command_insert = commands.iter().map(|(command_name, _, _)| {
+        let struct_name = get_cmd_struct_name(&command_name);
+        quote! { handlers.insert(#command_name.to_string(), Box::new(#struct_name))}
+    });
+
+    let chat_start = match chat_start_cmd {
+        Some(val) => quote! {
+             fn chat_start_command() -> Option<&'static str> {
+                Some(#val)
+            }
+        },
+        None => quote! {
+             fn chat_start_command() -> Option<&'static str> {
+                None
+            }
+        },
+    };
+    let chat_exit = match chat_exit_cmd {
+        Some(val) => quote! {
+             fn chat_exit_command() -> Option<&'static str> {
+                Some(#val)
+            }
+        },
+        None => quote! {
+             fn chat_exit_command() -> Option<&'static str> {
+                None
+            }
+        },
     };
 
-    let parse_arms = commands.iter().map(|(command_name, func_name)| {
-        let enum_variant_name = get_cmd_enum_variant(&command_name);
-        quote! {
-            #command_name => Some(Self::#enum_variant_name(Command {
-                description: stringify!(#func_name).to_string(),
-                handler: ::std::sync::Arc::new(|args| Box::pin(#func_name(args))),
-            }))
-        }
-    });
+    let llm_request = match llm_request_cmd {
+        Some(val) => quote! {
+             fn llm_request_command() -> Option<&'static str> {
+                Some(#val)
+            }
+        },
+        None => quote! {
+             fn llm_request_command() -> Option<&'static str> {
+                None
+            }
+        },
+    };
 
-    let handler_arms = commands.iter().map(|(command_name, _func_name)| {
-        let enum_variant_name = get_cmd_enum_variant(&command_name);
-        quote! {
-            Self::#enum_variant_name(cmd) => (cmd.handler)(args)
-        }
-    });
-
-    let bot_command_enum: proc_macro2::TokenStream = quote! {
+    let bot_commands_struct = quote!(
         #[derive(Default)]
-        pub enum BotCommand {
-            #[default]
-            #default_variant
-            #(#variants,)*
+        pub struct MyCommands;
+    );
+    let bot_commands_impl = quote! {
+        impl ::telegram_bot::types::BotCommands for MyCommands {
+            fn command_list() -> ::telegram_bot::types::CommandHashMap {
+                let mut handlers: ::telegram_bot::types::CommandHashMap = ::std::collections::HashMap::new();
+                #(#command_insert;)*
+
+                handlers
+            }
+            #chat_start
+            #chat_exit
+            #llm_request
         }
     };
+    let parsed_struct: ItemStruct =
+        syn::parse2(bot_commands_struct).expect("Failed to parse the MyCommands struct");
 
-    let bot_command_impl: proc_macro2::TokenStream = quote! {
-        impl BotCommand {
-            pub fn parse(command: &str) -> Option<Self> {
-                match command {
-                    #(#parse_arms,)*
-                    _ => None,
-                }
-            }
+    let parsed_impl: ItemImpl = syn::parse2(bot_commands_impl)
+        .expect("Failed to parse the BotCommands impl for MyCommands");
 
-            pub fn handler(&self, args: String) -> ::futures::future::BoxFuture<String> {
-                match self {
-                    Self::DefaultCmd => unimplemented!(),
-                    #(#handler_arms,)*
-                }
-            }
-        }
-    };
+    for handler_struct in handler_structs {
+        let item = handler_struct.to_string();
 
-    let command_parser_impl: proc_macro2::TokenStream = quote! {
-        impl ::telegram_bot::types::CommandParser for BotCommand {
-            fn parse(&self, command: &str) -> Option<Self>
-            where
-                Self: std::marker::Sized {
-                    BotCommand::parse(command)
-                }
+        let struct_str: proc_macro2::TokenStream = item
+            .parse()
+            .expect("Failed to convert the struct into TokenStream");
 
-            fn handler(&self, args: String) -> ::futures::future::BoxFuture<String> {
-                self.handler(args)
-            }
-        }
-    };
-    let parsed_enum: ItemEnum =
-        syn::parse2(bot_command_enum).expect("Failed to parse the generated BotCommand enum");
-    let parsed_impl: ItemImpl =
-        syn::parse2(bot_command_impl).expect("Failed to parse the generated impl for BotCommand");
-    let parsed_cmd_parser_impl: ItemImpl = syn::parse2(command_parser_impl)
-        .expect("Failed to parse the generated CommandParser impl for BotCommand");
+        let struct_p: ItemStruct =
+            syn::parse2(struct_str).expect("problem with parsing handler struct");
+
+        new_items.push(Item::Struct(struct_p));
+    }
+
+    for handler_impl in handler_impls {
+        let item = handler_impl.to_string();
+
+        let impl_str: proc_macro2::TokenStream = item
+            .parse()
+            .expect("Failed to convert the impl into TokenStream");
+
+        let impl_p: ItemImpl = syn::parse2(impl_str).expect("problem with parsing handler struct");
+
+        new_items.push(Item::Impl(impl_p));
+    }
 
     // 3. Add the Parsed Items to `new_items`
-    new_items.push(Item::Enum(parsed_enum));
+    new_items.push(Item::Struct(parsed_struct));
     new_items.push(Item::Impl(parsed_impl));
-    new_items.push(Item::Impl(parsed_cmd_parser_impl));
 
     // Create new content with the original brace token and the new items
     let new_content = Some((brace.clone(), new_items));
@@ -122,38 +191,53 @@ pub fn bot_commands(_args: TokenStream, input: TokenStream) -> TokenStream {
     };
 
     let expanded = quote! {
-        pub struct Command {
-            pub description: String,
-            pub handler: ::std::sync::Arc<dyn Fn(String) -> ::futures::future::BoxFuture<'static, String> + Send + Sync>,
-        }
         #new_module
     };
 
     TokenStream::from(expanded)
 }
 
-fn get_command_attribute(attrs: &[Attribute]) -> Option<String> {
+fn get_command_attribute(attrs: &[Attribute]) -> CommandAttribute {
+    let mut cmd_attr = CommandAttribute {
+        command: None,
+        chat_mode_start: None,
+        chat_mode_exit: None,
+        llm_request: None,
+    };
     for attr in attrs {
         if attr.path.is_ident(CMD_ATTR) {
             if let Ok(Meta::List(meta)) = attr.parse_meta() {
                 for nested in meta.nested {
-                    if let NestedMeta::Meta(Meta::NameValue(MetaNameValue {
-                        lit: Lit::Str(lit_str),
-                        ..
-                    })) = nested
+                    if let NestedMeta::Meta(Meta::NameValue(MetaNameValue { lit, path, .. })) =
+                        nested
                     {
-                        return Some(lit_str.value());
+                        if path.is_ident("cmd") {
+                            if let Lit::Str(lit_str) = lit {
+                                cmd_attr.command = Some(lit_str.value());
+                            }
+                        } else if path.is_ident("chat_start") {
+                            if let Lit::Bool(lit_bool) = lit {
+                                cmd_attr.chat_mode_start = Some(lit_bool.value());
+                            }
+                        } else if path.is_ident("chat_exit") {
+                            if let Lit::Bool(lit_bool) = lit {
+                                cmd_attr.chat_mode_exit = Some(lit_bool.value());
+                            }
+                        } else if path.is_ident("llm_request") {
+                            if let Lit::Bool(lit_bool) = lit {
+                                cmd_attr.llm_request = Some(lit_bool.value());
+                            }
+                        }
                     }
                 }
             }
         }
     }
-    None
+    cmd_attr
 }
 
 #[proc_macro_attribute]
 pub fn handler(args: TokenStream, input: TokenStream) -> TokenStream {
-    println!("### the args are: {:#?}", args);
     //validate the attribute,
     // for now, only check that cmd is present.
     let is_cmd_in_args = args.into_iter().any(|e| {
@@ -164,7 +248,7 @@ pub fn handler(args: TokenStream, input: TokenStream) -> TokenStream {
         }
     });
     if !is_cmd_in_args {
-        panic!("Handler macro used without 'cmd'!");
+        // panic!("Handler macro used without 'cmd'!");
     }
     input
 }
@@ -185,7 +269,7 @@ fn to_camel_case(s: &str) -> String {
     result
 }
 
-fn get_cmd_enum_variant(cmd: &str) -> Ident {
+fn get_cmd_struct_name(cmd: &str) -> Ident {
     let cmd_name = to_camel_case(cmd.trim_start_matches('/'));
-    Ident::new(&cmd_name, Span::call_site())
+    Ident::new(format!("{}Handler", cmd_name).as_str(), Span::call_site())
 }

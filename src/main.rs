@@ -1,7 +1,7 @@
 mod bot_commands;
 mod utils;
 use anyhow::Result;
-use bot_commands::commands::BotCommand;
+use bot_commands::commands::MyCommands;
 use std::error::Error;
 use std::path::PathBuf;
 use std::sync::Arc;
@@ -12,7 +12,7 @@ use tokio::select;
 use tokio::sync::Notify;
 use tokio::time::Duration;
 use tracing::{debug, error, info};
-type MyBot = TelegramBot<BotCommand>;
+type MyBot<'a> = TelegramBot<MyCommands>;
 const IP_CHECK_TIME: Duration = Duration::from_secs(60);
 
 #[tokio::main]
@@ -44,7 +44,7 @@ async fn main() -> Result<(), Box<dyn Error>> {
                 }
 
                 // generate new certificate
-                if utils::generate_certificate(
+                if BotServer::<MyBot>::generate_certificate(
                     PathBuf::from(&conf.server.pubkey_path),
                     PathBuf::from(&conf.server.privkey_path),
                     &current_ip,
