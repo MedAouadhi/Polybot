@@ -4,6 +4,7 @@ use bot_commands_macro::{bot_commands, handler};
 pub mod commands {
 
     use super::*;
+    use rand::Rng;
     use telegram_bot::services::llm::{Agent, OpenAiModel};
     use telegram_bot::services::openmeteo::OpenMeteo;
     use telegram_bot::types::{UserData, WeatherProvider};
@@ -67,5 +68,10 @@ pub mod commands {
     #[handler(cmd = "/endchat", chat_exit = true)]
     async fn endchat(_user: UserData, _request: String) -> String {
         "See ya!".to_string()
+    }
+
+    #[handler(cmd = "/dice")]
+    async fn dice(_: UserData, _: String) -> String {
+        rand::thread_rng().gen_range(1..=6).to_string()
     }
 }

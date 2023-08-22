@@ -248,7 +248,7 @@ pub fn handler(args: TokenStream, input: TokenStream) -> TokenStream {
         }
     });
     if !is_cmd_in_args {
-        // panic!("Handler macro used without 'cmd'!");
+        panic!("Handler macro used without 'cmd'!");
     }
     input
 }
