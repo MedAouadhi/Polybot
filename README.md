@@ -2,7 +2,7 @@
 
 [![Rust](https://github.com/MedAouadhi/homebot/actions/workflows/rust.yml/badge.svg?branch=master)](https://github.com/MedAouadhi/homebot/actions/workflows/rust.yml)
 
-An async bot server with straightforward commands definition, with intelligent chat mode using LLMs (currently OpenAI, Llama2 in mind).
+An async bot server with straightforward commands definition, with intelligent chat mode using LLMs (currently OpenAI, Llama2 in mind), and can be hosted anywhere.
 
 ## Background
 The main driver for this project, was the simple idea, that I wanted to ssh to my workstation (installed in my home) from anywhere, **without paying for a static ip or a domain, and without using any 3rd party software**, I simply need the public ip address of my home network.
