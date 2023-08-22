@@ -9,7 +9,7 @@ pub mod commands {
     use polybot::types::{BotUserActions, WeatherProvider};
     use rand::Rng;
 
-    use crate::utils::{get_affirmation, get_ip};
+    use polybot::utils::{get_affirmation, get_ip};
 
     #[handler(cmd = "/ip")]
     async fn ip(_user_tx: impl BotUserActions, _: String) -> String {

@@ -26,16 +26,6 @@ pub struct TelegramBot<B: BotCommands> {
 }
 
 impl<B: BotCommands> TelegramBot<B> {
-    pub fn new(config: BotConfig) -> Self {
-        TelegramBot {
-            client: reqwest::Client::new(),
-            config,
-            users: Arc::new(Mutex::new(HashMap::new())),
-            command_list: B::command_list(),
-            _commands: PhantomData,
-        }
-    }
-
     pub fn get_token(&self) -> &str {
         &self.config.token
     }
@@ -54,43 +44,19 @@ impl<B: BotCommands> TelegramBot<B> {
             .context("Could not send the reply")?;
         Ok(())
     }
-
-    pub async fn update_webhook_cert(&self, cert: PathBuf, ip: &str) -> Result<()> {
-        // get the pubkey file
-        let certificate = fs::read(&cert)
-            .await
-            .expect("Failed to read the certificate file");
-
-        let url = format!(
-            "https://api.telegram.org/bot{}/setWebhook",
-            self.config.token
-        );
-
-        let part = Part::bytes(certificate).file_name("cert.pem");
-        let form = multipart::Form::new()
-            .text("url", format!("https://{}", ip))
-            .part("certificate", part)
-            .text(
-                "allowed_updates",
-                serde_json::to_string(&vec!["message", "edited_message"])?,
-            )
-            .text("drop_pending_updates", serde_json::to_string(&true)?);
-
-        let resp = self
-            .client
-            .post(url)
-            .header(CONTENT_TYPE, "multipart/form-data")
-            .multipart(form)
-            .send()
-            .await
-            .context("Could not set the webhook")?;
-        debug!("[webhook set]{:#?}", resp.text().await);
-        Ok(())
-    }
 }
 
 #[async_trait]
 impl<B: BotCommands + 'static> Bot for TelegramBot<B> {
+    fn new(config: BotConfig) -> Self {
+        TelegramBot {
+            client: reqwest::Client::new(),
+            config,
+            users: Arc::new(Mutex::new(HashMap::new())),
+            command_list: B::command_list(),
+            _commands: PhantomData,
+        }
+    }
     async fn handle_message(&self, msg: String) -> Result<()> {
         let answer: String;
         let id: u64;
@@ -180,5 +146,38 @@ impl<B: BotCommands + 'static> Bot for TelegramBot<B> {
             "149.154.16?.*",
             "149.154.17?.*",
         ])
+    }
+
+    async fn update_webhook_cert(&self, cert: PathBuf, ip: &str) -> Result<()> {
+        // get the pubkey file
+        let certificate = fs::read(&cert)
+            .await
+            .expect("Failed to read the certificate file");
+
+        let url = format!(
+            "https://api.telegram.org/bot{}/setWebhook",
+            self.config.token
+        );
+
+        let part = Part::bytes(certificate).file_name("cert.pem");
+        let form = multipart::Form::new()
+            .text("url", format!("https://{}", ip))
+            .part("certificate", part)
+            .text(
+                "allowed_updates",
+                serde_json::to_string(&vec!["message", "edited_message"])?,
+            )
+            .text("drop_pending_updates", serde_json::to_string(&true)?);
+
+        let resp = self
+            .client
+            .post(url)
+            .header(CONTENT_TYPE, "multipart/form-data")
+            .multipart(form)
+            .send()
+            .await
+            .context("Could not set the webhook")?;
+        debug!("[webhook set]{:#?}", resp.text().await);
+        Ok(())
     }
 }

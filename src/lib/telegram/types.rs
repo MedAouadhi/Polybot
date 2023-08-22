@@ -80,26 +80,6 @@ pub struct Update {
     pub edited_message: Option<Message>,
     pub channel_post: Option<Message>,
     pub edited_channel_post: Option<Message>,
-    /*
-    #[serde(skip)]
-    pub inline_query: Option<String>,
-    #[serde(skip)]
-    chosen_inline_result: Option<String>,
-    #[serde(skip)]
-    callback_query: Option<String>,
-    #[serde(skip)]
-    shipping_query: Option<String>,
-    #[serde(skip)]
-    pre_checkout_query: Option<String>,
-    #[serde(skip)]
-    poll: Option<String>,
-    #[serde(skip)]
-    poll_answer: Option<String>,
-    my_chat_member: Option<ChatMemberUpdated>,
-    chat_member: Option<ChatMemberUpdated>,
-    #[serde(skip)]
-    chat_join_request: Option<String>,
-    */
 }
 
 #[derive(Deserialize, Debug)]

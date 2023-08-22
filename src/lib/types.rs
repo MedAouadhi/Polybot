@@ -1,5 +1,6 @@
 use std::{
     collections::HashMap,
+    path::PathBuf,
     sync::{
         atomic::{AtomicBool, Ordering},
         Arc,
@@ -57,7 +58,11 @@ pub type CommandHashMap = HashMap<String, Box<dyn BotCommandHandler + Send + Syn
 pub trait Bot: Send + Sync + 'static {
     async fn handle_message(&self, msg: String) -> Result<()>;
     async fn is_webhook_configured(&self, ip: &str) -> Result<bool>;
+    async fn update_webhook_cert(&self, cert: PathBuf, ip: &str) -> Result<()>;
     fn get_webhook_ips(&self) -> Result<Vec<&'static str>>;
+    fn new(config: BotConfig) -> Self
+    where
+        Self: Sized;
 }
 
 pub trait BotCommands: Default + Send + Sync {
