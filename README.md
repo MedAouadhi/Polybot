@@ -94,10 +94,16 @@ async fn main() -> Result<(), Box<dyn Error>> {
 - Note that we can opt-in/out of the webhook monitoring, which will periodically check for the validity of the self signed certificate in the
 bot provider servers (e.g: Telegram), and makes sure it remains valid, by generating and uploading a new one if the ip has changed.
 
+- If you choose to opt out (assuming you have a static ip and already have a certificate), then it's your job to set the webhook manually, e.g:
+```bash
+curl -F "url=https://11.22.33.44/" -F "certificate=@YOURPUBLIC.pem" \
+"https://api.telegram.org/bot212132232:12345678912345/setWebhook"
+```
+
 ### Chat mode
 Chat mode is simply the LLM request command (if provided) but without typing the command prefix each time, so once in the mode, you can chat with the llm just like any normal conversation.
 
-**Currently the llm does not have memory, so each command is a conversation on its own**.
+**Currently the llm does not have memory, so each message is a conversation on its own**.
 
 - To inform polybot of that, we just need to tell it about the command that `starts` the chat mode, the one that `exists` it and the `llm request` command.
 We do that by adding the boolean attributes in the `handler` procedural macro: 
