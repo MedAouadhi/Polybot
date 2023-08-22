@@ -29,7 +29,7 @@ I initially started this as a Telegram bot server, but then to further push my t
 ### Define your commands
 
 Adding a command is as easy as annotating the handler function with the `handler(cmd = "/my_command")` attribute.
-The commands need also be under a module annoted with `#[bot_commands]`.
+The commands need to be also under a module annotated with `#[bot_commands]`.
 
 ```rust
 use bot_commands_macro::{bot_commands, handler};
