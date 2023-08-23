@@ -4,16 +4,6 @@
 
 An async bot server with straightforward commands definition, with intelligent chat mode using LLMs (currently OpenAI, Llama2 in mind), and can be hosted anywhere.
 
-## Background
-The main driver for this project, was the simple idea, that I wanted to ssh to my workstation (installed in my home) from anywhere, **without paying for a static ip or a domain, and without using any 3rd party software**, I simply need the public ip address of my home network.
-
-Well the problem is that the ip address can change at any time, so I needed a software that is running locally in the network, which publishes the ip address whenever I ask it.
-
-Come social media bots! (just telegram for now). Because what is a better interface than a chat conversation in an app that I already use in my day to day life. With the bonus of adding more functionnality to the bot whenever suitable. 
-
-I chose Rust as I am already on its learning journey, and I decided this is the perfect didactic exercise.
-I initially started this as a Telegram bot server, but then to further push my trait system understanding, I decided to abstract it more, to support multiple bots (in theory).
-
 ## Features
 - Async server with dynamic ip support, periodic monitoring and update of the self signed certificate of the server based on ip changes:
     - Keep all accesses local to your network, don't need a third party hosting/routing service.
@@ -146,6 +136,16 @@ async fn endchat(_user_tx: impl BotUserActions, _request: String) -> String {
 
 ## Telegram bot example
 ![TelegramBot](https://github.com/MedAouadhi/Polybot/blob/master/demo.gif)
+
+## Background
+The main driver for this project, was the simple idea, that I wanted to ssh to my workstation (installed in my home) from anywhere, **without paying for a static ip or a domain, and without using any 3rd party software**, I simply need the public ip address of my home network.
+
+Well the problem is that the ip address can change at any time, so I needed a software that is running locally in the network, which publishes the ip address whenever I ask it.
+
+Come social media bots! (just telegram for now). Because what is a better interface than a chat conversation in an app that I already use in my day to day life. With the bonus of adding more functionnality to the bot whenever suitable. 
+
+I chose Rust as I am already on its learning journey, and I decided this is the perfect didactic exercise.
+I initially started this as a Telegram bot server, but then to further push my trait system understanding, I decided to abstract it more, to support multiple bots (in theory).
 
 ## Before you start
 - Make sure to forward the port 443 in the settings of your router or firewall. For my case I forwarded all incoming requests to the port 443 to my local 4443 port.
