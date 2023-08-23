@@ -108,11 +108,11 @@ impl<B: BotCommands + 'static> Bot for TelegramBot<B> {
                     "Adding the user (id = {}), (name = {}).",
                     user_id, user_name
                 );
-                users.insert(user_id, Mutex::new(BotUser::new()));
+                users.insert(user_id, BotUser::new());
             };
 
             let text = msg.get_message();
-            let mut user = users.get_mut(&user_id).unwrap().lock().await;
+            let user = users.get_mut(&user_id).unwrap();
 
             // update the user activity
             user.set_last_activity(chrono::Utc::now()).await;

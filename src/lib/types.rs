@@ -51,7 +51,7 @@ pub enum BotMessages {
     Message, // Telegram messages
 }
 
-pub type SharedUsers = Arc<Mutex<HashMap<u64, Mutex<BotUser>>>>;
+pub type SharedUsers = Arc<Mutex<HashMap<u64, BotUser>>>;
 pub type CommandHashMap = HashMap<String, Box<dyn BotCommandHandler + Send + Sync>>;
 
 #[async_trait]
