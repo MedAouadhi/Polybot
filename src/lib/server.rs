@@ -91,6 +91,7 @@ impl<B: Bot> BotServer<B> {
         // we take the server from the option so as to not take
         // ownership of "self", so that we can use the handle, to
         // stop the server at a later time.
+        self.bot.initialize().await?;
         if let Some(worker) = self.worker.take() {
             // worker.await?;
             let task = tokio::spawn(worker);

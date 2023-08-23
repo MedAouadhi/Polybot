@@ -114,7 +114,7 @@ impl From<String> for Update {
     }
 }
 
-#[derive(Serialize, Deserialize)]
+#[derive(Serialize, Deserialize, Default)]
 struct BotCommandScope {
     #[serde(rename(serialize = "type"))]
     scope_type: Scope,
@@ -122,8 +122,9 @@ struct BotCommandScope {
     user_id: Option<u64>,
 }
 
-#[derive(Deserialize)]
+#[derive(Deserialize, Default)]
 pub enum Scope {
+    #[default]
     BotCommandScopeDefault,
     BotCommandScopeAllPrivateChats,
     BotCommandScopeAllGroupChats,
@@ -154,15 +155,22 @@ impl serde::ser::Serialize for Scope {
     }
 }
 
-#[derive(Serialize, Deserialize)]
+#[derive(Serialize, Deserialize, Default)]
 pub struct BotCommandsParams {
-    scope: Option<BotCommandScope>,
-    language_code: Option<String>,
+    scope: BotCommandScope,
+    #[serde(skip_serializing_if = "String::is_empty")]
+    language_code: String,
 }
 
 #[derive(Serialize, Deserialize)]
 pub struct BotCommandsSet {
-    commands: Vec<String>,
+    pub commands: Vec<BotCommand>,
     #[serde(flatten)]
-    metadata: Option<BotCommandsParams>,
+    pub metadata: BotCommandsParams,
+}
+
+#[derive(Serialize, Deserialize)]
+pub struct BotCommand {
+    pub command: String,
+    pub description: String,
 }

@@ -8,7 +8,7 @@ use crate::types::{
     Bot, BotCommands, BotConfig, BotMessage, BotMessages, BotUser, BotUserActions, BotUserCommand,
     CommandHashMap, SharedUsers,
 };
-use anyhow::{bail, Context, Result};
+use anyhow::{bail, Context, Ok, Result};
 use async_trait::async_trait;
 use reqwest::multipart::Part;
 use reqwest::{header::CONTENT_TYPE, multipart};
@@ -16,6 +16,8 @@ use serde_json::json;
 use tokio::fs;
 use tokio::sync::Mutex;
 use tracing::debug;
+
+use super::types::{BotCommand, BotCommandsParams, BotCommandsSet};
 
 pub struct TelegramBot<B: BotCommands> {
     client: reqwest::Client,
@@ -42,6 +44,36 @@ impl<B: BotCommands> TelegramBot<B> {
             .send()
             .await
             .context("Could not send the reply")?;
+        Ok(())
+    }
+
+    async fn set_my_commands(&self, commands: Vec<&str>) -> Result<()> {
+        let cmds = commands
+            .iter()
+            .map(|cmd| BotCommand {
+                command: cmd.to_string(),
+                description: cmd.to_string(),
+            })
+            .collect();
+
+        let payload = BotCommandsSet {
+            commands: cmds,
+            metadata: BotCommandsParams::default(),
+        };
+        let url = format!(
+            "https://api.telegram.org/bot{}/setMyCommands",
+            self.config.token
+        );
+
+        let to_send = serde_json::to_string(&payload)?;
+        self.client
+            .post(url)
+            .header(CONTENT_TYPE, "application/json")
+            .body(to_send)
+            .send()
+            .await
+            .context("could not set my commands!")?;
+
         Ok(())
     }
 }
@@ -178,6 +210,14 @@ impl<B: BotCommands + 'static> Bot for TelegramBot<B> {
             .await
             .context("Could not set the webhook")?;
         debug!("[webhook set]{:#?}", resp.text().await);
+        Ok(())
+    }
+
+    async fn initialize(&self) -> Result<()> {
+        let list = B::command_list();
+        let commands: Vec<&str> = list.keys().map(|x| x.as_str()).collect();
+        debug!("Configuring the bot with these commands: {:#?}.", commands);
+        self.set_my_commands(commands).await?;
         Ok(())
     }
 }
