@@ -1,12 +1,16 @@
+use std::sync::Arc;
+
 use anyhow::{bail, Result};
 use async_trait::async_trait;
-use llm_chain::{executor, parameters, prompt};
+use llm_chain::{chains::conversation::Chain, executor, parameters, prompt, step::Step};
 use llm_chain_openai::chatgpt::Executor;
+use tokio::sync::Mutex;
 use tracing::debug;
 
 #[async_trait]
 pub trait Agent: Send + Sync {
     async fn request(&self, req: &str) -> Result<String>;
+    async fn conversation(&self, req: &str, chain: Arc<Mutex<Chain>>) -> Result<String>;
     async fn chain_requests(&self, steps: Vec<&str>) -> Result<String>;
     async fn map_reduce_chain(&self, steps: Vec<&str>) -> Result<String>;
 }
@@ -53,5 +57,17 @@ impl Agent for OpenAiModel {
     }
     async fn map_reduce_chain(&self, _steps: Vec<&str>) -> Result<String> {
         todo!()
+    }
+
+    async fn conversation(&self, req: &str, chain: Arc<Mutex<Chain>>) -> Result<String> {
+        let step = Step::for_prompt_template(prompt!(user: req));
+        Ok(chain
+            .lock()
+            .await
+            .send_message(step, &parameters!(), &self.executor)
+            .await?
+            .to_immediate()
+            .await?
+            .to_string())
     }
 }

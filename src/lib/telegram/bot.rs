@@ -1,12 +1,12 @@
 use std::collections::HashMap;
 use std::marker::PhantomData;
 use std::path::PathBuf;
-use std::sync::Arc;
+use std::sync::{Arc, RwLock};
 
 use crate::telegram::types::{Response, Update, Webhook};
 use crate::types::{
-    Bot, BotCommands, BotConfig, BotMessage, BotMessages, BotUser, BotUserActions, BotUserCommand,
-    CommandHashMap, SharedUsers,
+    Bot, BotCommands, BotConfig, BotMessage, BotMessages, BotUser, BotUserActions, CommandHashMap,
+    SharedUsers,
 };
 use anyhow::{bail, Context, Ok, Result};
 use async_trait::async_trait;
@@ -108,11 +108,11 @@ impl<B: BotCommands + 'static> Bot for TelegramBot<B> {
                     "Adding the user (id = {}), (name = {}).",
                     user_id, user_name
                 );
-                users.insert(user_id, BotUser::new());
+                users.insert(user_id, Arc::new(RwLock::new(BotUser::new())));
             };
 
             let text = msg.get_message();
-            let user = users.get_mut(&user_id).unwrap();
+            let mut user = Arc::clone(users.get_mut(&user_id).unwrap());
 
             // update the user activity
             user.set_last_activity(chrono::Utc::now()).await;
@@ -127,18 +127,9 @@ impl<B: BotCommands + 'static> Bot for TelegramBot<B> {
                 argument = message.collect::<Vec<&str>>().join(" ");
             }
             debug!("Cmd: {:?}, Arg: {:?}", command, argument);
-            let (tx, mut rx) = tokio::sync::mpsc::channel::<BotUserCommand>(32);
 
             answer = if let Some(bot_command) = self.command_list.get(command.unwrap()) {
-                let result = bot_command.handle(tx, argument).await;
-                if let Some(action) = rx.recv().await {
-                    match action {
-                        BotUserCommand::UpdateChatMode { chat_mode } => {
-                            user.set_chat_mode(chat_mode).await;
-                        }
-                    }
-                }
-                result
+                bot_command.handle(user.clone(), argument).await
             } else {
                 "Did not understand!".into()
             };

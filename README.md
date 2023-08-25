@@ -93,8 +93,6 @@ curl -F "url=https://11.22.33.44/" -F "certificate=@YOURPUBLIC.pem" \
 ### Chat mode
 Chat mode is simply the LLM request command (if provided) but without typing the command prefix each time, so once in the mode, you can chat with the llm just like any normal conversation.
 
-**Currently the llm does not have memory, so each message is a conversation on its own**.
-
 - To inform polybot of that, we just need to tell it about the command that `starts` the chat mode, the one that `exists` it and the `llm request` command.
 We do that by adding the boolean attributes in the `handler` procedural macro: 
 ```rust

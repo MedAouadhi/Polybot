@@ -92,11 +92,11 @@ pub fn bot_commands(_args: TokenStream, input: TokenStream) -> TokenStream {
             let struct_name = get_cmd_struct_name(&command_name);
             let state = if chat_start == &Some(true) {
                 quote! {
-                    user_tx.set_chat_mode(true).await;
+                    user.set_chat_mode(true).await;
                 }
             } else if chat_exit == &Some(true) {
                 quote! {
-                    user_tx.set_chat_mode(false).await;
+                    user.set_chat_mode(false).await;
                 }
             } else {
                 quote!()
@@ -105,9 +105,9 @@ pub fn bot_commands(_args: TokenStream, input: TokenStream) -> TokenStream {
 
                 #[::async_trait::async_trait]
                 impl ::polybot::types::BotCommandHandler for #struct_name {
-                    async fn handle(&self, user_tx: ::tokio::sync::mpsc::Sender<::polybot::types::BotUserCommand>, args: String) -> String {
+                    async fn handle(&self, user: ::polybot::types::SharedUser, args: String) -> String {
                         #state
-                        #func_name(user_tx, args).await
+                        #func_name(user, args).await
                     }
                 }
             }

@@ -7,7 +7,8 @@ Type=simple
 Restart=always
 RestartSec=1
 User=${USER}
-ExecStart= RUST_LOG=debug /home/${USER}//.cargo/bin/cargo run --release /home/${USER}/personal/homebot/Cargo.toml
+Environment=OPENAI_API_KEY=enter_your_token_here
+ExecStart= RUST_LOG=debug /home/${USER}/.cargo/bin/cargo run --release /home/${USER}/personal/homebot/Cargo.toml
 WorkingDirectory=/home/${USER}/personal/homebot
 
 [Install]

@@ -3,7 +3,7 @@ use std::{
     path::PathBuf,
     sync::{
         atomic::{AtomicBool, Ordering},
-        Arc,
+        Arc, RwLock,
     },
 };
 
@@ -12,8 +12,9 @@ use anyhow::Result;
 use async_trait::async_trait;
 use chrono::{DateTime, Utc};
 use enum_dispatch::enum_dispatch;
+use llm_chain::chains::conversation::Chain;
+use llm_chain::prompt;
 use serde::Deserialize;
-use tokio::sync::mpsc::Sender;
 use tokio::sync::Mutex;
 
 #[derive(Deserialize, Debug, Clone)]
@@ -51,7 +52,8 @@ pub enum BotMessages {
     Message, // Telegram messages
 }
 
-pub type SharedUsers = Arc<Mutex<HashMap<u64, BotUser>>>;
+pub type SharedUser = Arc<RwLock<BotUser>>;
+pub type SharedUsers = Arc<Mutex<HashMap<u64, SharedUser>>>;
 pub type CommandHashMap = HashMap<String, Box<dyn BotCommandHandler + Send + Sync>>;
 
 #[async_trait]
@@ -75,13 +77,15 @@ pub trait BotCommands: Default + Send + Sync {
 
 #[async_trait]
 pub trait BotCommandHandler {
-    async fn handle(&self, user_tx: Sender<BotUserCommand>, args: String) -> String;
+    async fn handle(&self, user: SharedUser, args: String) -> String;
 }
 
 #[derive(Default)]
 pub struct BotUser {
     chat_mode: AtomicBool,
     last_activity: DateTime<Utc>,
+    // chain: Arc<RwLock<Chain>>,
+    chain: Arc<Mutex<Chain>>,
 }
 
 impl BotUser {
@@ -96,49 +100,43 @@ pub trait BotUserActions {
     async fn get_last_activity(&self) -> DateTime<Utc>;
     async fn set_chat_mode(&self, state: bool);
     async fn is_in_chat_mode(&self) -> bool;
+    async fn get_conversation(&self) -> Arc<Mutex<Chain>>;
+    async fn reset_conversation_chain(&self, system_prompt: &str) -> Result<()>;
 }
 
 #[async_trait]
-impl BotUserActions for BotUser {
+impl BotUserActions for SharedUser {
     async fn set_last_activity(&mut self, date: DateTime<Utc>) {
-        self.last_activity = date;
+        self.write().expect("poisoned lock").last_activity = date;
     }
 
     async fn get_last_activity(&self) -> DateTime<Utc> {
-        self.last_activity
+        self.read().expect("poisoned lock").last_activity
     }
 
     async fn set_chat_mode(&self, state: bool) {
-        self.chat_mode.store(state, Ordering::Relaxed);
+        self.write()
+            .expect("poisoned lock")
+            .chat_mode
+            .store(state, Ordering::Relaxed);
     }
 
     async fn is_in_chat_mode(&self) -> bool {
-        self.chat_mode.load(Ordering::Relaxed)
-    }
-}
-
-#[async_trait]
-impl BotUserActions for Sender<BotUserCommand> {
-    async fn set_last_activity(&mut self, _date: DateTime<Utc>) {
-        unimplemented!()
+        self.read()
+            .expect("poisoned lock")
+            .chat_mode
+            .load(Ordering::Relaxed)
     }
 
-    async fn get_last_activity(&self) -> DateTime<Utc> {
-        unimplemented!()
+    async fn get_conversation(&self) -> Arc<Mutex<Chain>> {
+        self.read().expect("poisoned lock").chain.clone()
     }
 
-    async fn set_chat_mode(&self, state: bool) {
-        self.send(BotUserCommand::UpdateChatMode { chat_mode: state })
-            .await
-            .unwrap();
+    async fn reset_conversation_chain(&self, system_prompt: &str) -> Result<()> {
+        self.write().expect("poisoned lock").chain =
+            Arc::new(Mutex::new(Chain::new(prompt!(system: system_prompt))?));
+        Ok(())
     }
-
-    async fn is_in_chat_mode(&self) -> bool {
-        unimplemented!()
-    }
-}
-pub enum BotUserCommand {
-    UpdateChatMode { chat_mode: bool },
 }
 
 pub enum ForecastTime {
