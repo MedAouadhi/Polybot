@@ -26,6 +26,8 @@ pub struct Config {
 pub struct BotConfig {
     pub name: String,
     pub token: String,
+    pub chat_id: String,
+    pub db_token: String,
 }
 
 #[derive(Deserialize, Debug, Clone)]
@@ -59,6 +61,7 @@ pub type CommandHashMap = HashMap<String, Box<dyn BotCommandHandler + Send + Syn
 #[async_trait]
 pub trait Bot: Send + Sync + 'static {
     async fn initialize(&self) -> Result<()>;
+    async fn send_message(&self, dest: &str, msg: &str) -> Result<()>;
     async fn handle_message(&self, msg: String) -> Result<()>;
     async fn is_webhook_configured(&self, ip: &str) -> Result<bool>;
     async fn update_webhook_cert(&self, cert: PathBuf, ip: &str) -> Result<()>;
@@ -84,7 +87,6 @@ pub trait BotCommandHandler {
 pub struct BotUser {
     chat_mode: AtomicBool,
     last_activity: DateTime<Utc>,
-    // chain: Arc<RwLock<Chain>>,
     chain: Arc<Mutex<Chain>>,
 }
 

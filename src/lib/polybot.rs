@@ -1,3 +1,4 @@
+use crate::plant::PlantServer;
 use crate::server::BotServer;
 use crate::utils::{generate_certificate, get_ip};
 use crate::{Bot, Config};
@@ -45,12 +46,16 @@ impl<B: Bot> Polybot<B> {
                     // explicity handle the result as we are in async block
                     if let Ok(current_ip) = get_ip().await {
                         debug!("Current ip = {:?}", current_ip);
-                        if !bot_clone.is_webhook_configured(&current_ip).await.unwrap() {
-                            info!("Certificate is not correclty configured, configuring ...");
+                        if let Ok(configured) = bot_clone.is_webhook_configured(&current_ip).await {
+                            if !configured {
+                                info!("Certificate is not correclty configured, configuring ...");
+                            } else {
+                                // the webhook is already set
+                                tokio::time::sleep(timeout).await;
+                                continue;
+                            }
                         } else {
-                            // the webhook is already set
-                            tokio::time::sleep(timeout).await;
-                            continue;
+                            error!("Issue with getting the webhook status.");
                         }
 
                         // generate new certificate
@@ -84,9 +89,14 @@ impl<B: Bot> Polybot<B> {
                 }
             });
         }
-
         loop {
             let mut server = BotServer::new(self.config.server.clone(), self.bot.clone());
+            let plant = PlantServer::new(
+                "192.168.2.132",
+                &self.config.bot.chat_id,
+                3333,
+                &self.config.bot.db_token,
+            );
 
             // the flow will block here, until one of the branches terminates, which is due to:
             // - The server terminates by itself (e.g crash ..)
@@ -97,6 +107,10 @@ impl<B: Bot> Polybot<B> {
                 _ = config_changed.notified() => {
                     debug!("Received certificate update notification, restarting server ...");
                     server.stop().await;
+                    continue;
+                }
+                e = plant.start(self.bot.clone()) => {
+                    tracing::info!("Plant Server exited {:?}", e);
                     continue;
                 }
             }

@@ -67,7 +67,7 @@ pub fn bot_commands(_args: TokenStream, input: TokenStream) -> TokenStream {
         }
     }
 
-    let attrs_count = vec![&chat_start_cmd, &chat_exit_cmd, &llm_request_cmd]
+    let attrs_count = [&chat_start_cmd, &chat_exit_cmd, &llm_request_cmd]
         .iter()
         .filter(|&x| x.is_some())
         .count();
@@ -77,7 +77,7 @@ pub fn bot_commands(_args: TokenStream, input: TokenStream) -> TokenStream {
     }
 
     let handler_structs = commands.iter().map(|(command_name, _, _, _, _)| {
-        let struct_name = get_cmd_struct_name(&command_name);
+        let struct_name = get_cmd_struct_name(command_name);
         quote! {
 
             #[derive(Default)]
@@ -89,7 +89,7 @@ pub fn bot_commands(_args: TokenStream, input: TokenStream) -> TokenStream {
     let handler_impls = commands
         .iter()
         .map(|(command_name, func_name, _, chat_start, chat_exit)| {
-            let struct_name = get_cmd_struct_name(&command_name);
+            let struct_name = get_cmd_struct_name(command_name);
             let state = if chat_start == &Some(true) {
                 quote! {
                     user.set_chat_mode(true).await;
@@ -114,7 +114,7 @@ pub fn bot_commands(_args: TokenStream, input: TokenStream) -> TokenStream {
         });
 
     let command_insert = commands.iter().map(|(command_name, _, _, _, _)| {
-        let struct_name = get_cmd_struct_name(&command_name);
+        let struct_name = get_cmd_struct_name(command_name);
         quote! { handlers.insert(#command_name.to_string(), Box::new(#struct_name))}
     });
 
@@ -209,7 +209,7 @@ pub fn bot_commands(_args: TokenStream, input: TokenStream) -> TokenStream {
     new_items.push(Item::Impl(parsed_impl));
 
     // Create new content with the original brace token and the new items
-    let new_content = Some((brace.clone(), new_items));
+    let new_content = Some((*brace, new_items));
     let new_module = ItemMod {
         attrs: module.attrs.clone(),
         vis: module.vis.clone(),
@@ -271,7 +271,7 @@ pub fn handler(args: TokenStream, input: TokenStream) -> TokenStream {
     // for now, only check that cmd is present.
     let is_cmd_in_args = args.into_iter().any(|e| {
         if let proc_macro::TokenTree::Ident(x) = e {
-            x.to_string() == "cmd".to_string()
+            x.to_string() == *"cmd"
         } else {
             false
         }

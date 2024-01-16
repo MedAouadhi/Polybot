@@ -27,9 +27,16 @@ async fn handler(body: web::Bytes, bot: web::Data<Arc<dyn Bot>>) -> impl Respond
         error!("Wrong message format received! {:#?}", body.to_vec());
         return HttpResponse::BadRequest();
     };
-    if bot.into_inner().handle_message(update).await.is_err() {
-        error!("Failed to handle the message!");
-        return HttpResponse::InternalServerError();
+    if bot
+        .into_inner()
+        .handle_message(update.clone())
+        .await
+        .is_err()
+    {
+        error!(
+            "Failed to handle the message! {}, continuing anyway!",
+            update
+        );
     }
     HttpResponse::Ok()
 }

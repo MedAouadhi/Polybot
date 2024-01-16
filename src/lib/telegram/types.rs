@@ -1,7 +1,9 @@
+use core::panic;
+
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 use serde_with::TimestampSeconds;
-use tracing::debug;
+use tracing::{debug, info};
 
 use crate::types::BotMessage;
 
@@ -108,9 +110,13 @@ impl<T: for<'a> Deserialize<'a>> From<String> for Response<T> {
 
 impl From<String> for Update {
     fn from(value: String) -> Self {
-        let update_str = serde_json::from_str(&value).unwrap();
-        debug!("{:#?}", update_str);
-        update_str
+        if let Ok(update_str) = serde_json::from_str(&value) {
+            debug!("{:#?}", update_str);
+            update_str
+        } else {
+            info!("Invalid request state: {value}");
+            panic!()
+        }
     }
 }
 
@@ -173,4 +179,26 @@ pub struct BotCommandsSet {
 pub struct BotCommand {
     pub command: String,
     pub description: String,
+}
+
+#[derive(Serialize, Default)]
+pub struct SendMessage {
+    pub chat_id: String,
+    #[serde(skip)]
+    pub _message_thread_id: Option<u64>,
+    pub text: String,
+    #[serde(skip)]
+    pub _parse_mode: Option<String>,
+    #[serde(skip)]
+    pub _entities: Option<String>,
+    #[serde(skip)]
+    pub _link_preview_options: Option<String>,
+    #[serde(skip)]
+    pub _disable_notification: Option<String>,
+    #[serde(skip)]
+    pub _protect_content: Option<String>,
+    #[serde(skip)]
+    pub _reply_parameters: Option<String>,
+    #[serde(skip)]
+    pub _reply_markup: Option<String>,
 }

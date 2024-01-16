@@ -9,6 +9,7 @@ pub mod commands {
     use polybot::types::{BotUserActions, WeatherProvider};
     use polybot::utils::{get_affirmation, get_ip};
     use rand::Rng;
+    use std::io::Cursor;
 
     #[handler(cmd = "/ip")]
     async fn ip(_user_tx: impl BotUserActions, _: String) -> String {
@@ -93,5 +94,32 @@ pub mod commands {
     #[handler(cmd = "/dice")]
     async fn dice(_: impl BotUserActions, _: String) -> String {
         rand::thread_rng().gen_range(1..=6).to_string()
+    }
+
+    #[handler(cmd = "/docsearch")]
+    async fn retrieval(_: impl BotUserActions, request: String) -> String {
+        if let Ok(agent) = OpenAiModel::try_new() {
+            if let Ok(answer) = agent.retrieval("mohamed", &request).await {
+                return answer;
+            }
+            "Problem getting the agent response".to_string()
+        } else {
+            "Could not create the llm agent, check the API key".to_string()
+        }
+    }
+
+    #[handler(cmd = "/url")]
+    async fn url(_: impl BotUserActions, request: String) -> String {
+        tracing::debug!("getting {}", request);
+        if let Ok(resp) = reqwest::get(request).await {
+            let body = resp.text().await.unwrap();
+            let cursor = Cursor::new(body.into_bytes());
+            let out = html2text::from_read(cursor, 200);
+            tracing::debug!("{out}");
+            // out
+            "printed it".to_string()
+        } else {
+            "Problem getting the url!".to_string()
+        }
     }
 }

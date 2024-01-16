@@ -13,7 +13,7 @@ anyhow = "1.0"
 serde = { version = "1.0.2", features = ["derive"] }
 actix-web = { version = "4", features = ["openssl"] }
 openssl = "0.10"
-toml = "0.7.1"
+toml = "0.8.8"
 serde_with = { version = "3.0.0", features = ["chrono"] }
 chrono = "0.4.26"
 async-trait = "0.1.72"
@@ -27,10 +27,14 @@ tracing-actix-web = "0.7.6"
 actix-server = "2.2.0"
 socket2 = "0.5.3"
 futures = "0.3.28"
-llm-chain = "0.12.3"
-llm-chain-openai = "0.12.3"
+llm-chain = "0.13.0"
+llm-chain-openai = "0.13.0"
 bot_commands_macro = { path = "./bot_commands_macro" }
 enum_dispatch = "0.3.12"
+llm-chain-qdrant = "0.13.0"
+qdrant-client = "1.4.0"
+html2text = "0.11.0"
+influxdb = { version = "0.7.1", features = ["derive"] }
 
 [[bin]]
 name = "homebot"
@@ -42,5 +46,5 @@ path = "src/lib/lib.rs"
 
 [dev-dependencies]
 actix-rt = "2.8.0"
-httpmock = "0.6.8"
+httpmock = "0.7.0"
 tempfile = "3.7.1"

@@ -17,7 +17,7 @@ use tokio::fs;
 use tokio::sync::Mutex;
 use tracing::debug;
 
-use super::types::{BotCommand, BotCommandsParams, BotCommandsSet};
+use super::types::{BotCommand, BotCommandsParams, BotCommandsSet, SendMessage};
 
 pub struct TelegramBot<B: BotCommands> {
     client: reqwest::Client,
@@ -209,6 +209,30 @@ impl<B: BotCommands + 'static> Bot for TelegramBot<B> {
         let commands: Vec<&str> = list.keys().map(|x| x.as_str()).collect();
         debug!("Configuring the bot with these commands: {:#?}.", commands);
         self.set_my_commands(commands).await?;
+        Ok(())
+    }
+
+    async fn send_message(&self, dest: &str, msg: &str) -> Result<()> {
+        let payload = SendMessage {
+            chat_id: dest.to_string(),
+            text: msg.to_string(),
+            ..Default::default()
+        };
+
+        let url = format!(
+            "https://api.telegram.org/bot{}/sendMessage",
+            self.config.token
+        );
+
+        let to_send = serde_json::to_string(&payload)?;
+        self.client
+            .post(url)
+            .header(CONTENT_TYPE, "application/json")
+            .body(to_send)
+            .send()
+            .await
+            .context("could not send the message")?;
+
         Ok(())
     }
 }
