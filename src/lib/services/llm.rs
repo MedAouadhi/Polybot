@@ -2,9 +2,13 @@ use std::sync::Arc;
 
 use anyhow::{bail, Result};
 use async_trait::async_trait;
+
+#[allow(unused)]
 use llm_chain::document_stores::document_store::DocumentStore;
+#[allow(unused)]
 use llm_chain::tools::tools::VectorStoreTool;
 use llm_chain::{chains::conversation::Chain, executor, parameters, prompt, step::Step};
+#[allow(unused)]
 use llm_chain::{
     schema::{Document, EmptyMetadata},
     traits::{Embeddings, VectorStore},

@@ -92,7 +92,7 @@ impl<B: Bot> Polybot<B> {
         loop {
             let mut server = BotServer::new(self.config.server.clone(), self.bot.clone());
             let plant = PlantServer::new(
-                "192.168.2.132",
+                "192.168.2.214",
                 &self.config.bot.chat_id,
                 3333,
                 &self.config.bot.db_token,
@@ -110,7 +110,7 @@ impl<B: Bot> Polybot<B> {
                     continue;
                 }
                 e = plant.start(self.bot.clone()) => {
-                    tracing::info!("Plant Server exited {:?}", e);
+                    tracing::error!("Plant Server exited {:?}", e);
                     continue;
                 }
             }
