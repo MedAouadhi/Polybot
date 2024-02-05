@@ -126,15 +126,18 @@ mod tests {
         let dir = tempdir().unwrap();
         let config_path = dir.path().join("config.toml");
         let data = toml::toml! {
-            [bot]
-            name = "dummy"
-            token = "dummytoken"
+        [bot]
+        name = "dummy"
+        token = "tokendummy"
+        chat_id = "122433"
+        db_token = "tokendb"
+        coinmarket_token = "cointoken"
 
-            [server]
-            ip = "0.0.0.0"
-            port = 4443
-            privkeyfile = "YOURPRIVATE.key"
-            pubkeyfile = "YOURPUBLIC.pem"
+        [server]
+        ip = "0.0.0.0"
+        port = 4443
+        privkeyfile = "YOURPRIVATE.key"
+        pubkeyfile = "YOURPUBLIC.pem"
         };
 
         fs::write(&config_path, data.to_string()).await.unwrap();

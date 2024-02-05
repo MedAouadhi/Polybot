@@ -28,6 +28,7 @@ pub struct BotConfig {
     pub token: String,
     pub chat_id: String,
     pub db_token: String,
+    pub coinmarket_token: String,
 }
 
 #[derive(Deserialize, Debug, Clone)]

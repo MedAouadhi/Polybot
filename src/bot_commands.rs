@@ -4,12 +4,23 @@ use bot_commands_macro::{bot_commands, handler};
 pub mod commands {
 
     use super::*;
+    use polybot::services::coinmarketcap::Coinmarket;
     use polybot::services::llm::{Agent, OpenAiModel};
     use polybot::services::openmeteo::OpenMeteo;
     use polybot::types::{BotUserActions, WeatherProvider};
-    use polybot::utils::{get_affirmation, get_ip};
+    use polybot::utils::{get_affirmation, get_config, get_ip};
     use rand::Rng;
     use std::io::Cursor;
+
+    #[handler(cmd = "/bitcoin")]
+    async fn get_bitcoin(_user_tx: impl BotUserActions, _: String) -> String {
+        let config = get_config("config.toml").await.unwrap();
+        let market = Coinmarket::new(config.bot.coinmarket_token);
+        if let Ok(price) = market.get_bitcoin_price().await {
+            return format!("{:.3} €", price);
+        }
+        "Error getting the bitcoin price".to_string()
+    }
 
     #[handler(cmd = "/ip")]
     async fn ip(_user_tx: impl BotUserActions, _: String) -> String {
